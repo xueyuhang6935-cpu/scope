@@ -1,0 +1,36 @@
+# Agent 目录迁移实施计划
+
+本次授权范围为 M0—M2；M3—M7 与物流 T02—T24 均不启动。起始版本为 `6669e8d`，迁移分支为 `refactor/agent-layout`。
+
+## 阶段与验收
+
+| 阶段 | 交付 | 验收 |
+| --- | --- | --- |
+| M0 | 基线、函数映射、任务状态、独立提交 | 当前后端与离线评测有实际结果；调用方与副作用已核对 |
+| M1 | Python 包及职责说明、提示词与加载器迁移 | 模板字节和版本一致；不依赖当前目录；调用方接通；离线评测无新增失败 |
+| M2 | 纯上下文组装与报告协议抽取 | 输入输出与旧版本一致；权限仍在后端；报告错误与旧格式兼容行为不变；回归和启动检查 |
+| M3—M7 | 工具、Agent、工作流、测试评测整体迁移及收尾 | 后续单独执行，本次不宣称完成 |
+
+## 保持不变的边界
+
+不改接口、数据库结构、LangGraph 节点、状态字段、检查点路径、thread_id、审批与预算规则；不升级依赖、不调用真实模型、不改源数据。不将旧供应链规则直接转换为物流规则。
+
+`project/` 不导入后端或 FastAPI；当前任务纯数据组装迁入 context，业务问题解析留在后端。报告格式和引用校验迁入 agents，方案阻断仍在后端。临时兼容模块只能显式转发，不复制实现；内部调用使用新路径。
+
+## 命令与证据
+
+在 Scope 根目录执行。M0 保存完整后端测试和 24 个离线案例；M1 运行提示词迁移专项及离线评测；M2 运行完整后端、project 专项、离线评测及隔离启动。新增 project 测试的发现命令会在创建后写入 README。
+
+```powershell
+Remove-Item Env:SCOPE_DATABASE_INTEGRATION -ErrorAction SilentlyContinue
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s backend -t . -p 'test_*.py' -v
+.\.venv\Scripts\python.exe -X utf8 -m backend.eval_supply_agent --output test-results/agent-migration/m0-eval.json
+```
+
+证据目录：`test-results/agent-migration/`（忽略、不提交）。持久文档记录实际结果；T01 的历史报告不改写。T01 浏览器为 24 通过、9 失败，数据库专项因缺少旧场景前提跳过。本次无前端修改，不重复运行历史失败页面；不宣称数据库恢复或真实模型质量通过。
+
+## 提交与回退
+
+M0、M1、M2 各自提交。开始时已有 `AGENTS.md` 未提交修改及 `plan/20261007-152452.md` 未跟踪文件；保留其原始字节，不混入迁移提交。哈希记录在 `baseline.json`。
+
+回退顺序为先 M2 后 M1，使用对应提交的 `git revert`，不硬重置。M0 文档可保留。由于本批不修改数据库与检查点结构，不需要数据库降级操作。现有未提交文件不参与回退。
