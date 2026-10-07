@@ -18,6 +18,7 @@ from .database_connection import routes as database_routes
 from .supply import SupplyService
 from .risk_monitor import RiskMonitor
 from .supply_workflow import SupplyWorkflow
+from .investigation_routes import routes as investigation_routes
 from .business_access import BusinessAccess, current_scope
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -101,7 +102,7 @@ def create_app(env=None):
     app.include_router(database_routes(auth, data, env, monitor, access))
     app.include_router(supply.routes())
     app.include_router(monitor.routes())
-    app.include_router(workflow.routes())
+    app.include_router(investigation_routes(workflow))
     app.include_router(access.routes())
 
     @app.get("/api/health")

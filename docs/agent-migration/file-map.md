@@ -50,7 +50,11 @@
 
 原有 backend 测试及 eval 数据没有整体移动，只调整模拟 patch 指向真正的 HTTP 适配器；M6 再处理测试与评测目录。M4 对照 M3 的 24 个固定案例（10 个 Agent、14 个范围解析），请求体和输出均一致。
 
-## 后续混合模块的逐函数归属（本次不动）
+## M5a API 与业务服务拆分
+
+`backend/investigation_routes.py:routes(service)` 保留 11 个端点路径、名称、参数与响应，委托给 `backend/investigation_service.py:InvestigationService`。原嵌套路由中的成员管理、调查列表、审计读取、撤回、审批列表、方案详情和审批决定成为服务方法，保留原 SQL、权限、事务和提交后调度顺序。main 直接挂载新路由，旧工作流入口显式兼容转发。
+
+## M5b 工作流与恢复待迁归属
 
 | 模块 / 函数对象 | 未来归属及副作用 | 调用入口与验证 |
 | --- | --- | --- |
