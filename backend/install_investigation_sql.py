@@ -10,7 +10,7 @@ from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from dotenv import dotenv_values, set_key
 
-from .investigation_sql import TABLES, SCHEMA, ROLE
+from project.tools.investigation_sql import TABLES, SCHEMA, ROLE
 
 CONTEXT = "NULLIF(current_setting('scope.agent_context', true), '')::jsonb"
 

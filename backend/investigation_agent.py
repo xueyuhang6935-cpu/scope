@@ -10,7 +10,7 @@ import httpx
 from .supply_model import configured
 from project.prompts.loader import INVESTIGATOR_PROMPT, INVESTIGATOR_PROMPT_VERSION
 from project.agents.report_protocol import REPORT_SCHEMA, validate_report
-from .investigation_sql import TABLES, validate_sql
+from project.tools.investigation_sql import TABLES, validate_sql, SQL_TOOL_SCHEMAS
 
 
 def investigate(bundle, evidence, env, model_allowed=True, query_tools=None, harness=None, evidence_reader=None):
@@ -84,14 +84,7 @@ def investigate(bundle, evidence, env, model_allowed=True, query_tools=None, har
         # Raw evidence must pass the same live permission boundary as SQL. Keep only
         # deterministic candidate retrieval; data exploration now executes queries.
         schemas = [s for s in schemas if s['function']['name'] == 'get_candidate_plans']
-        schemas.extend([
-            {'type': 'function', 'function': {'name': 'get_database_schema', 'description': '读取授权表目录及业务口径；指定tables获取最多6张表的字段与关联，编写SQL前先调用。',
-                'parameters': {'type': 'object', 'properties': {'tables': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 6}}, 'additionalProperties': False}}},
-            {'type': 'function', 'function': {'name': 'execute_sql', 'description': '在授权视图上执行单条只读PostgreSQL查询。返回证据ID、结果、截断标记或可修正错误。',
-                'parameters': {'type': 'object', 'properties': {'sql': {'type': 'string', 'maxLength': 12000},
-                    'parameters': {'type': 'object', 'description': '与SQL中 %(name)s 对应的具名标量参数；无参数时传空对象。'}},
-                    'required': ['sql', 'parameters'], 'additionalProperties': False}}},
-        ])
+        schemas.extend(SQL_TOOL_SCHEMAS)
     schemas.append({'type': 'function', 'function': {'name': 'update_plan', 'description': '根据新证据、错误或审批反馈更新调查步骤；不执行业务动作。',
         'parameters': {'type': 'object', 'properties': {'reason': {'type': 'string', 'maxLength': 1000},
             'steps': {'type': 'array', 'items': {'type': 'string', 'maxLength': 500}, 'minItems': 1, 'maxItems': 5}},

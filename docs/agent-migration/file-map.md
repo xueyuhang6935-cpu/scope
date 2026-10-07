@@ -1,6 +1,6 @@
 # 文件与函数迁移映射
 
-核查起点：`6669e8d`。本次只执行 M1、M2 所列条目。未来阶段条目为职责边界，尚非已实施路径。
+核查起点：`6669e8d`。M1、M2 已完成，现追加 M3；后续阶段条目为职责边界，尚非已实施路径。
 
 ## 本批完整函数清单
 
@@ -27,6 +27,17 @@
 
 路径引用核查覆盖 README、docs、backend、tests、scripts；历史 `plan/` 与 T01 基线保留当时路径。当前专题说明随迁移更新。`backend.eval_supply_agent` 及案例路径本批保留，M6 再迁移。
 
+## M3 工具与调用保护
+
+| 原对象 | 实际归属与副作用 | 调用方与验证 |
+| --- | --- | --- |
+| `investigation_sql` 白名单、`validate_sql` | `project/tools/investigation_sql.py`；纯 AST 校验 | Agent、安装器、离线评测改为直接导入；旧入口显式导出兼容对象 |
+| Agent 内两个 SQL 工具声明 | 同上 `SQL_TOOL_SCHEMAS`；内容不变 | Agent 引用；与 M2 常量等价比较 |
+| `InvestigationSQL.call` | 同上；通过注入连接执行 schema/查询，封装证据与错误 | 工作流继续使用后端兼容构造器；结构门禁、参数、截断、重复列、撤权测试 |
+| DSN、连接与角色限制 | `backend/investigation_sql.restricted_connection`；打开 PostgreSQL、设置只读事务/超时/授权上下文 | 驱动错误转为仅携带 SQLSTATE 的异常；角色四项特权及专用连接测试 |
+| `InvestigationHarness.check/start/finish/set_scope/records` | `project/tools/executor.py`；实时授权复核、生命周期，存储委托 | Agent 调用前后保护；旧撤权、范围变化及失败审计测试 |
+| 审计表初始化、写入、读取与 `interrupt` | `backend/investigation_audit.py`；原 SQL 原样保留 | `backend/investigation_harness.py` 组装存储；临时 SQLite 重启、中断隔离与范围留存测试 |
+
 ## 后续混合模块的逐函数归属（本次不动）
 
 | 模块 / 函数对象 | 未来归属及副作用 | 调用入口与验证 |
@@ -39,11 +50,7 @@
 | `record_stage / read_run / from_calculation / start_investigation` | 后端调查服务；读写和幂等 | supply 与 routes；状态与创建测试 |
 | `routes` 及内嵌端点 | 后端 API；请求授权、参数、响应 | FastAPI；接口回归 |
 | `investigation_agent.investigate` 及内嵌 stop/budget/feedback/repair | M4 拆决策入 agents，上下文入 context，工具分发入 tools；模型请求及审计副作用需显式边界 | SupplyWorkflow.investigate、离线评测、模拟模型测试 |
-| `InvestigationHarness.__init__ / start / finish / set_scope / interrupt / records` | M3 工具生命周期与后端审计存储分开；SQLite DDL/写入/读取 | 工作流、工具；审计生命周期测试 |
-| `InvestigationHarness.check` | 工具调用保护，使用后端授权能力 | Agent 调用前后；撤权和范围变化测试 |
-| `investigation_sql.validate_sql` | tools；纯 SQL 语法/白名单校验 | 工具调用及 SQL 单元测试 |
-| `InvestigationSQL.__init__ / call` 及内嵌查询逻辑 | tools 与后端查询适配分开；数据库查询、超时、权限 | Agent/工作流；专用只读连接集成 |
 
 ## 明确保留
 
-本批不迁移前端、FastAPI 入口、认证、数据库、schema、业务计算、SQL 工具、Agent 循环、工作流、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M2 可以增加必要的迁移专项测试，不提前执行 M6 的测试整体搬迁。
+本批不迁移前端、FastAPI 入口、认证、数据库、schema、业务计算、Agent 循环、工作流、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M3 增加必要的迁移专项测试，不提前执行 M6 的测试整体搬迁。

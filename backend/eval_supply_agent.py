@@ -13,7 +13,7 @@ import httpx
 from sqlglot import parse_one, exp
 
 from .investigation_agent import investigate
-from .investigation_sql import validate_sql
+from project.tools.investigation_sql import validate_sql
 from .supply_model import propose_with_model
 
 CASES = Path(__file__).with_name('evals') / 'supply_agent_cases.json'
