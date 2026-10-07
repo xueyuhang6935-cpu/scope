@@ -295,7 +295,7 @@ Playwright 使用 3010 端口的测试前端；`tests/supply-live.spec.ts` 另�
 
 `npm run start:legacy` 仅保留旧 Express 认证回退（需要 Node.js 24+），不提供当前完整供应链 API；日常开发与运行使用 FastAPI 入口。
 
-Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。Agent 核心与宿主集成测试运行：
+Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)，逐函数去向见 [函数清单](docs/agent-migration/function-map.md)，协作规则见 [AGENTS.md](AGENTS.md)。Agent 核心与宿主集成测试运行：
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
