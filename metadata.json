@@ -1,0 +1,6 @@
+{
+  "name": "OPENHORSE",
+  "description": "OPENHORSE Multi-screen UI Navigation Prototype including agent marketplaces, recharge & subscriptions, account settings, and conversational interfaces.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,154 @@
+import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+
+test('数据接入五项调整：卡片、上传、配置入口、模板与记录分类', async ({ page }) => {
+  await page.route('**/api/auth/session', route => route.fulfill({ json: { user: { name: '测试计划员' } } }));
+  await page.route('**/api/supply/**', route => route.fulfill({ status: 503, json: { message: '测试服务未启用' } }));
+  await page.route('**/api/data/imports?*', route => route.fulfill({ json: [{ id: 'REAL-TEST', filename: '用户库存.csv', factory: 'B', imported: 3, isolated: 0, created_at: '2026-10-03' }] }));
+  await page.goto('/data/connections?factory=B');
+  await expect(page.locator('.sp-connection-card')).toHaveCount(3);
+  await expect(page.locator('.sp-connection-card').filter({ hasText: '文件导入' }).getByRole('button', { name: '上传文件' })).toBeVisible();
+  await expect(page.getByText('未配置', { exact: true })).toHaveCount(2);
+  for (const name of ['配置数据库', '配置接口']) {
+    await page.getByRole('button', { name }).click();
+    await expect(page.getByRole('dialog')).toContainText('配置服务尚未开放');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+  }
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('link', { name: '下载数据模板' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('数据导入模板.csv');
+  expect(await readFile((await download.path())!, 'utf8')).toBe('\uFEFF物料编码,数量,单位,日期\r\n');
+  await page.getByRole('button', { name: '查看模板字段说明' }).click();
+  await expect(page.getByRole('dialog')).toContainText('物料编码（必填）');
+  await page.getByRole('button', { name: '关闭', exact: true }).click();
+  const real = page.getByRole('link', { name: 'REAL-TEST', exact: true });
+  const demo = page.getByRole('link', { name: /BATCH-001 ·/ });
+  await expect(real).toBeVisible();
+  await expect(demo).toHaveCount(0);
+  await page.getByRole('button', { name: '用户导入', exact: true }).click();
+  await expect(real).toBeVisible();
+  await expect(demo).not.toBeVisible();
+  await page.getByRole('button', { name: '示例数据', exact: true }).click();
+  await expect(real).not.toBeVisible();
+  await expect(demo).toHaveCount(0);
+  await page.getByRole('button', { name: '全部记录', exact: true }).click();
+  await expect(real).toBeVisible();
+  await expect(demo).toHaveCount(0);
+  await expect(page.locator('.sp-footer')).toHaveCount(0);
+  await page.route('**/api/data/imports?*', route => route.fulfill({ json: [] }));
+  await page.reload();
+  await expect(page.getByText('暂无真实导入批次。', { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/data-connections.png', fullPage: true });
+  await page.getByRole('button', { name: '上传文件' }).click();
+  await expect(page).toHaveURL(/\/data\/connections\?factory=B/);
+  await expect(page.getByRole('dialog', { name: '文件导入', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: '文件导入', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '上传文件' })).toBeFocused();
+  await page.goto('/data/imports/new?factory=B');
+  await expect(page.getByRole('heading', { name: '文件接入', exact: true })).toBeVisible();
+  await expect(page.locator('.sp-footer')).toBeVisible();
+});
+
+test('导入弹窗完成真实流程、关闭保护与记录刷新', async ({ page }) => {
+  await page.route('**/api/auth/session', route => route.fulfill({ json: { user: { name: '测试计划员' } } }));
+  await page.route('**/api/supply/**', route => route.fulfill({ status: 503, json: {} }));
+  const batch = { id: 'REAL-NEW', filename: '库存.csv', factory: 'B', total: 1, imported: 1, isolated: 0, created_at: '2026-10-03' };
+  let saved = false;
+  let releaseCommit!: () => void;
+  const pendingCommit = new Promise<void>(resolve => { releaseCommit = resolve; });
+  await page.route('**/api/data/imports?*', route => route.fulfill({ json: saved ? [batch] : [] }));
+  await page.route('**/api/data/imports/preview', route => route.fulfill({ json: { draftId: 'DRAFT-1', filename: '库存.csv', columns: ['物料编码', '数量', '单位'], sample: [{ 物料编码: 'P001', 数量: '10', 单位: '件' }], total: 1, sheets: [] } }));
+  await page.route('**/api/data/imports/DRAFT-1/check', route => route.fulfill({ json: { rows: [{ row: 2, material: 'P001', quantity: '10', unit: '件', normalizedQuantity: '10', status: 'valid' }], issues: [], blocking: 0, isolated: 0 } }));
+  await page.route('**/api/data/imports/DRAFT-1/commit', async route => { await pendingCommit; saved = true; await route.fulfill({ json: batch }); });
+  await page.goto('/data/connections?factory=B');
+  await page.getByRole('button', { name: '示例数据', exact: true }).click();
+  await page.getByRole('button', { name: '上传文件' }).click();
+  const modal = page.getByRole('dialog', { name: '文件导入', exact: true });
+  await expect(modal.getByLabel(/^工厂/)).toHaveValue('B');
+  await modal.getByLabel('负责人', { exact: true }).fill('测试负责人');
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.keyboard.press('Escape');
+  await expect(modal).toBeVisible();
+  await expect(modal.getByLabel('负责人', { exact: true })).toHaveValue('测试负责人');
+  await modal.locator('input[type=file]').setInputFiles({ name: '库存.csv', mimeType: 'text/csv', buffer: Buffer.from('物料编码,数量,单位\nP001,10,件') });
+  await modal.getByRole('button', { name: '预览文件' }).click();
+  await expect(modal.getByRole('heading', { name: '预览与映射' })).toBeVisible();
+  await modal.getByRole('button', { name: '运行校验' }).click();
+  await modal.getByRole('button', { name: '下一步' }).click();
+  await modal.getByRole('button', { name: '提交导入', exact: true }).click();
+  await page.getByRole('button', { name: '确认提交', exact: true }).click();
+  await expect(modal.getByRole('button', { name: '关闭', exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(modal).toBeVisible();
+  releaseCommit();
+  await expect(modal.getByText('批次 REAL-NEW 已保存')).toBeVisible();
+  await page.screenshot({ path: 'test-results/import-dialog.png', fullPage: true });
+  await modal.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page).toHaveURL(/\/data\/connections\?factory=B/);
+  await expect(page.getByRole('link', { name: 'REAL-NEW', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '上传文件' }).click();
+  await modal.getByLabel('负责人', { exact: true }).fill('待取消');
+  page.once('dialog', dialog => dialog.accept());
+  await modal.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+});
+
+test('批量导入逐文件校验、整批提交与失败重试', async ({ page }) => {
+  await page.route('**/api/auth/session', route => route.fulfill({ json: { user: { name: '测试计划员' } } }));
+  await page.route('**/api/supply/**', route => route.fulfill({ status: 503, json: {} }));
+  let previewCount = 0;
+  const submitted: any[] = [];
+  let saved = false;
+  const batches = [1, 2].map(n => ({ id: `BULK-${n}`, filename: `库存${n}.csv`, factory: 'B', total: 1, imported: 1, isolated: 0, created_at: '2026-10-03' }));
+  await page.route('**/api/data/imports?*', route => route.fulfill({ json: saved ? batches : [] }));
+  await page.route('**/api/data/imports/preview', route => {
+    previewCount++;
+    return route.fulfill({ json: { draftId: `DRAFT-${previewCount}`, filename: `库存${previewCount}.csv`, columns: ['编码', '数量', '单位'], sample: [{ 编码: `P00${previewCount}`, 数量: '10', 单位: '件' }], total: 1, sheets: [] } });
+  });
+  await page.route('**/api/data/imports/*/check', route => route.fulfill({ json: { rows: [{ row: 2, material: `P00${previewCount}`, quantity: '10', unit: '件', normalizedQuantity: '10', status: 'valid' }], issues: [], blocking: 0, isolated: 0 } }));
+  await page.route('**/api/data/imports/*/commit', () => { throw new Error('批量导入不应逐文件提交'); });
+  await page.route('**/api/data/imports/bulk-commit', route => {
+    submitted.push(route.request().postDataJSON());
+    if (submitted.length === 1) return route.fulfill({ status: 409, json: { message: '库存2.csv 导入失败；整批未保存。' } });
+    saved = true;
+    return route.fulfill({ json: batches });
+  });
+  await page.goto('/data/connections?factory=B');
+  await page.getByRole('button', { name: '上传文件' }).click();
+  const modal = page.getByRole('dialog', { name: '文件导入', exact: true });
+  await modal.getByLabel('负责人', { exact: true }).fill('测试负责人');
+  await modal.locator('input[type=file]').setInputFiles([1, 2, 3].map(n => ({ name: `库存${n}.csv`, mimeType: 'text/csv', buffer: Buffer.from(`编码,数量,单位\nP00${n},10,件`) })));
+  await modal.getByRole('row').filter({ hasText: '库存3.csv' }).getByRole('button', { name: '移除' }).click();
+  for (let index = 1; index <= 2; index++) {
+    await modal.getByRole('button', { name: '预览文件' }).click();
+    if (index === 1) await modal.getByRole('combobox', { name: /^物料编码/ }).selectOption('编码');
+    else await expect(modal.getByRole('combobox', { name: /^物料编码/ })).toHaveValue('编码');
+    await modal.getByRole('button', { name: '运行校验' }).click();
+    await modal.getByRole('button', { name: '下一步' }).click();
+    expect(submitted).toHaveLength(0);
+    if (index === 1) {
+      await expect(modal.getByRole('button', { name: '提交整批导入' })).toHaveCount(0);
+      await modal.getByRole('button', { name: '确认此文件并继续' }).click();
+      await expect(modal.getByLabel(/^工厂/)).toBeDisabled();
+    }
+  }
+  await expect(modal.getByRole('table', { name: '整批导入汇总' }).locator('tbody tr')).toHaveCount(2);
+  await page.screenshot({ path: 'test-results/bulk-import-summary.png', fullPage: true });
+  await modal.getByRole('button', { name: '提交整批导入' }).click();
+  await page.getByRole('button', { name: '确认提交', exact: true }).click();
+  await expect(modal.getByRole('alert')).toContainText('整批未保存');
+  await expect(modal.getByText('全部 2 个文件已保存')).toHaveCount(0);
+  await modal.getByRole('button', { name: '提交整批导入' }).click();
+  await page.getByRole('button', { name: '确认提交', exact: true }).click();
+  await expect(modal.getByText('全部 2 个文件已保存')).toBeVisible();
+  expect(submitted).toHaveLength(2);
+  expect(submitted[0]).toEqual(submitted[1]);
+  expect(submitted[0].files.map((file: { draftId: string }) => file.draftId)).toEqual(['DRAFT-1', 'DRAFT-2']);
+  await modal.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(page).toHaveURL(/\/data\/connections\?factory=B/);
+  for (const batch of batches) await expect(page.getByRole('link', { name: batch.id, exact: true })).toBeVisible();
+});
