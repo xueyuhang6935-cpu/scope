@@ -1,6 +1,6 @@
 # SupplyPilot 供应链智能助手
 
-> 实现核对日期：2026-10-06（北京时间）。本说明依据 [代码修改记录](plan/) 与当前代码整理，最新功能记录为 [20261006-185430](plan/20261006-185430.md)。
+> 目录与入口核对日期：2026-10-07（北京时间）。本说明依据 [代码修改记录](plan/) 与当前代码整理，Agent M0—M7 迁移结果见 [迁移状态](docs/agent-migration/status.md)。
 
 Scope 是 SupplyPilot 的 Web 应用，围绕汽车供应链的库存、缺料风险、调查取证、处置方案试算和人工审批提供工作空间。前端使用 React + TypeScript + Vite，后端使用 Python FastAPI，调查流程由 LangGraph 编排。
 
@@ -180,10 +180,14 @@ Scope/
 │   └── supply/             助手、风险、调查审批、数据与权限页面
 ├── backend/                FastAPI、业务计算、LangGraph、权限及 Python 测试
 │   └── eval_supply_agent.py 评测宿主组装与兼容 CLI
-├── project/                Agent 核心（按阶段迁移）
-│   ├── agents/             报告结构与证据引用协议
+├── project/                Agent 核心、测试及评测
+│   ├── agents/             调查判断循环、报告结构与证据引用协议
+│   ├── tools/              SQL 工具、调用保护及工具分发
+│   ├── skills/             任务方法（当前仅职责说明）
+│   ├── workflows/          图、人工等待及恢复调度
 │   ├── context/            已授权任务数据的纯上下文组装
 │   ├── prompts/            提示词与内容版本加载器
+│   ├── memory/             长期信息（当前仅职责说明）
 │   ├── evals/              固定案例、评分与人工审核逻辑
 │   └── tests/              核心检查及 integration 宿主集成测试
 ├── tests/                  Playwright 页面测试与真实后端联调
@@ -297,4 +301,4 @@ Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。Age
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
 ```
 
-M0—M6 已完成：提示词加载器在 `project/prompts/loader.py`，上下文及调查初始消息组装在 `project/context/investigation.py`，模型报告协议在 `project/agents/report_protocol.py`，Agent 判断循环在 `project/agents/investigator.py`；工具分发、SQL 校验与调用保护位于 `project/tools/`，LangGraph 编排和恢复位于 `project/workflows/investigation.py`。后端保留 API、模型请求、授权、业务事务、数据库连接、审计和检查点资源组装。旧检查点路径、节点和状态保持兼容。M6 将 Agent 宿主测试集中到 `project/tests/integration/`，固定案例与评分逻辑迁入 `project/evals/`，原评测 CLI 保留为后端组装入口。两组 Python 测试需分别运行，不能仅运行 backend 发现命令；分类见 [测试说明](project/tests/README.md)。M7 尚未启动。
+M0—M7 已完成：提示词加载器在 `project/prompts/loader.py`，上下文及调查初始消息组装在 `project/context/investigation.py`，模型报告协议在 `project/agents/report_protocol.py`，Agent 判断循环在 `project/agents/investigator.py`；工具分发、SQL 校验与调用保护位于 `project/tools/`，LangGraph 编排和恢复位于 `project/workflows/investigation.py`。后端保留 API、模型请求、授权、业务事务、数据库连接、审计和检查点资源组装。旧检查点路径、节点和状态保持兼容。M6 将 Agent 宿主测试集中到 `project/tests/integration/`，固定案例与评分逻辑迁入 `project/evals/`，原评测 CLI 保留为后端组装入口。两组 Python 测试需分别运行，不能仅运行 backend 发现命令；分类见 [测试说明](project/tests/README.md)。M7 兼容入口和维护规则见 [收尾说明](docs/agent-migration/compatibility.md)。

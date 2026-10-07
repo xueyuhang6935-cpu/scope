@@ -1,6 +1,6 @@
 # Agent 目录迁移实施计划
 
-M0—M5b 已完成，现按用户授权完成 M6 测试及评测整理；M7 与物流 T02—T24 不启动。起始版本为 `6669e8d`，迁移分支为 `refactor/agent-layout`；M6 开发回退点为 `cb8f13b`，本阶段独立提交。
+M0—M6 已完成，现按用户授权完成 M7 文档与兼容入口收尾；物流 T02—T24 不启动。起始版本为 `6669e8d`，迁移分支为 `refactor/agent-layout`；M7 开发回退点为 `99e8e13`，本阶段独立提交。
 
 ## 阶段与验收
 
@@ -14,7 +14,7 @@ M0—M5b 已完成，现按用户授权完成 M6 测试及评测整理；M7 与�
 | M5a | 调查 API 与业务服务拆分 | 11 个端点 OpenAPI 不变；原服务方法等价；鉴权、审批事务与提交后调度验证 |
 | M5b | 工作流及恢复控制迁入 workflows，服务与检查点资源留后端 | 节点/状态/边、thread_id、同步检查点不变；暂停恢复、旧检查点、异常审计、重规划、关闭及启动验证 |
 | M6 | Agent 测试分类迁移，评测案例与评分归入 evals | 原用例不丢失、不重复，断言与冻结案例不变；评分对照一致，完整离线回归、CLI 与文档更新 |
-| M7 | 收尾 | 后续单独执行，本次不启动 |
+| M7 | 文档与兼容入口收尾 | 九目录说明、宿主与转发边界、调用方、验证命令及回退说明一致；两组测试与离线评测通过，历史限制保留 |
 
 ## 保持不变的边界
 
@@ -24,13 +24,13 @@ M0—M5b 已完成，现按用户授权完成 M6 测试及评测整理；M7 与�
 
 ## 命令与证据
 
-在 Scope 根目录执行。M0 保存完整后端测试和 24 个离线案例；M1 运行提示词迁移专项及离线评测；M2 运行完整后端、project 专项、离线评测及隔离启动。新增 project 测试的发现命令会在创建后写入 README。
+在 Scope 根目录执行以下完整 Python 回归与离线评测；两组发现命令都需要运行。各阶段实际结果保存在 status.md，以下为当前收尾命令。
 
 ```powershell
 Remove-Item Env:SCOPE_DATABASE_INTEGRATION -ErrorAction SilentlyContinue
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s backend -t . -p 'test_*.py' -v
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
-.\.venv\Scripts\python.exe -X utf8 -m backend.eval_supply_agent --output test-results/agent-migration/m0-eval.json
+.\.venv\Scripts\python.exe -X utf8 -m backend.eval_supply_agent --output test-results/agent-migration/m7-eval.json
 ```
 
 证据目录：`test-results/agent-migration/`（忽略、不提交）。持久文档记录实际结果；T01 的历史报告不改写。T01 浏览器为 24 通过、9 失败，数据库专项因缺少旧场景前提跳过。本次无前端修改，不重复运行历史失败页面；不宣称数据库恢复或真实模型质量通过。
@@ -41,4 +41,6 @@ M0、M1、M2、M3、M4、M5a、M5b 各自提交。M5a 为 `ae9c277`，是 M5b �
 
 M6 前再次记录用户已有文件与冻结案例哈希于 `m6-before.json`，用例清单于 `m6-before-tests.json`。M6 将 Agent 相关测试迁入 `project/tests/integration/`，循环模拟从数据库工作流测试拆出；通用后端与浏览器测试不动。评测核心与案例迁入 `project/evals/`，CLI 保留后端宿主注入。测试旧路径不增加发现包装，避免重复执行。
 
-回退顺序为先 M6、再 M5b、M5a、M4、M3、M2、M1，使用对应提交的 `git revert`，不硬重置。M0 文档可保留。由于本批不修改数据库与检查点结构，不需要数据库降级操作。现有未提交文件不参与回退。
+M7 保留已验证的显式兼容导出和必要宿主组装，不复制实现，不删除既有调用契约；具体清单、删除前提与调用路径见 [兼容说明](compatibility.md)。补齐九目录说明与当前文档入口，不修改用户已有 AGENTS.md 或历史任务记录。
+
+回退顺序为先 M7、再 M6、M5b、M5a、M4、M3、M2、M1，使用对应提交的 `git revert`，不硬重置。M0 文档可保留。由于本批不修改数据库与检查点结构，不需要数据库降级操作。现有未提交文件不参与回退。
