@@ -8,7 +8,7 @@ Scope 是 SupplyPilot 的 Web 应用，围绕汽车供应链的库存、缺料�
 
 ## 当前功能
 
-调查 API 定义在 `backend/investigation_routes.py`，权限、审批事务和调查读写由 `backend/investigation_service.py` 提供；应用通过原工作流入口组装，接口路径保持兼容。
+调查 API 定义在 `backend/investigation_routes.py`，权限、审批事务和调查读写由 `backend/investigation_service.py` 提供；图与恢复控制位于 `project/workflows/investigation.py`，`backend/supply_workflow.py` 组装业务服务和原 SQLite 检查点，接口路径保持兼容。
 
 | 模块 | 已实现能力 | 使用条件与边界 |
 | --- | --- | --- |
@@ -295,4 +295,4 @@ Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。新
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
 ```
 
-M0—M4 已完成：提示词加载器在 `project/prompts/loader.py`，上下文及调查初始消息组装在 `project/context/investigation.py`，模型报告协议在 `project/agents/report_protocol.py`，Agent 判断循环在 `project/agents/investigator.py`；工具分发、SQL 校验与调用保护位于 `project/tools/`。后端保留模型配置和 HTTP 请求、授权计算、受限 PostgreSQL 连接、SQLite 审计存储及兼容组装入口，业务意图解析与方案阻断仍在后端。LangGraph 编排及评测入口尚未迁移。两组 Python 测试需分别运行，不能用后端测试发现命令代替 project 专项检查。
+M0—M5b 已完成：提示词加载器在 `project/prompts/loader.py`，上下文及调查初始消息组装在 `project/context/investigation.py`，模型报告协议在 `project/agents/report_protocol.py`，Agent 判断循环在 `project/agents/investigator.py`；工具分发、SQL 校验与调用保护位于 `project/tools/`，LangGraph 编排和恢复位于 `project/workflows/investigation.py`。后端保留 API、模型请求、授权、业务事务、数据库连接、审计和检查点资源组装。旧检查点路径、节点和状态保持兼容；评测入口及旧测试尚未整体迁移。两组 Python 测试需分别运行，不能用后端测试发现命令代替 project 专项检查。

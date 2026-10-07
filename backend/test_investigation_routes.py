@@ -1,6 +1,9 @@
 """HTTP delegation and transaction ordering without a source PostgreSQL database."""
 from contextlib import contextmanager
 from copy import deepcopy
+from pathlib import Path
+import sqlite3
+import tempfile
 import threading
 import unittest
 from unittest.mock import Mock, patch
@@ -11,6 +14,8 @@ from fastapi.testclient import TestClient
 from .common import APIError, reply
 from .investigation_routes import routes
 from .investigation_service import InvestigationService
+from .data_store import DataStore
+from .supply_workflow import SupplyWorkflow
 
 
 class RouteTests(unittest.TestCase):
@@ -69,8 +74,7 @@ class ServiceTests(unittest.TestCase):
         self.service.ensure = Mock()
         self.service.access = Mock()
         self.service.validate_plan = Mock(return_value=None)
-        self.service.process = Mock()
-        self.service.executor = Mock()
+        self.service.schedule = Mock()
         self.plan = {'id': 'p', 'run_id': 'r', 'version': 2, 'content_hash': 'hash',
                      'status': 'candidate', 'content': {'totalCost': '10'}}
         self.run = {'id': 'r', 'workspace_id': 'w', 'requested_by': 'requester',
@@ -101,7 +105,7 @@ class ServiceTests(unittest.TestCase):
         self.patch = patch('backend.investigation_service.connection', connection)
         self.patch.start()
         self.addCleanup(self.patch.stop)
-        self.service.executor.submit.side_effect = lambda *args: self.events.append('schedule')
+        self.service.schedule.side_effect = lambda *args: self.events.append('schedule')
 
     def test_approval_rejects_self_and_stale_versions(self):
         for user, body, status in [(self.user, {**self.body, 'version': 1}, 409),
@@ -109,14 +113,14 @@ class ServiceTests(unittest.TestCase):
             with self.subTest(user=user, body=body), self.assertRaises(APIError) as raised:
                 self.service.decide(user, 'p', body)
             self.assertEqual(raised.exception.status, status)
-        self.service.executor.submit.assert_not_called()
+        self.service.schedule.assert_not_called()
         self.assertFalse(any('INSERT INTO' in sql for sql in self.events))
 
     def test_committed_approval_precedes_resume_scheduling(self):
         result = self.service.decide(self.user, 'p', self.body)
         self.assertEqual(result['decision'], 'approved')
         self.assertEqual(self.events[-2:], ['commit', 'schedule'])
-        self.service.executor.submit.assert_called_once_with(self.service.process, 'r')
+        self.service.schedule.assert_called_once_with('r')
         self.assertTrue(any("status='resuming'" in sql for sql in self.events))
 
     def test_repeated_approval_is_idempotent_and_conflicts_are_rejected(self):
@@ -125,7 +129,7 @@ class ServiceTests(unittest.TestCase):
         with self.assertRaises(APIError) as raised:
             self.service.decide(self.user, 'p', {**self.body, 'decision': 'rejected'})
         self.assertEqual(raised.exception.status, 409)
-        self.service.executor.submit.assert_not_called()
+        self.service.schedule.assert_not_called()
         self.assertFalse(any('INSERT INTO' in sql for sql in self.events))
 
     def test_stale_plan_commits_replan_before_returning_conflict(self):
@@ -144,3 +148,67 @@ class ServiceTests(unittest.TestCase):
             self.service.cancel(self.user, 'r')
         self.assertEqual(raised.exception.status, 409)
         self.db.execute.assert_not_called()
+
+    def test_model_reservation_commits_before_agent_and_replay_disallows_request(self):
+        self.service.env = {'SUPPLY_INVESTIGATOR': 'model'}
+        self.service.data = Mock()
+        self.run['model_attempted'] = False
+        state = {'run_id': 'r', 'bundle': {}, 'evidence': []}
+        execute = self.db.execute.side_effect
+
+        def reserve(sql, args=None):
+            if 'model_attempted=true' in sql:
+                self.run['model_attempted'] = True
+            return execute(sql, args)
+
+        self.db.execute.side_effect = reserve
+        allowed = []
+
+        def agent(bundle, evidence, env, model_allowed, **kwargs):
+            self.assertEqual(self.events[-1], 'commit')
+            allowed.append(model_allowed)
+            if model_allowed:
+                raise RuntimeError('response lost after charge')
+            return {'manualRequired': True}
+
+        with patch('backend.investigation_service.InvestigationHarness'), \
+                patch('backend.investigation_service.InvestigationSQL'), \
+                patch('backend.investigation_service.investigate', side_effect=agent):
+            with self.assertRaises(RuntimeError):
+                self.service.run_investigation(state)
+            result = self.service.run_investigation(state)
+        self.assertEqual(allowed, [True, False])
+        self.assertTrue(result['report']['manualRequired'])
+
+    def test_finish_uses_persisted_approval_not_resume_payload(self):
+        with self.assertRaises(APIError) as raised:
+            self.service.finish_approval({'run_id': 'r', 'decision': {'approvalId': 'forged'}})
+        self.assertEqual(raised.exception.status, 409)
+        for decision, plan_status, expected in [('approved', 'approved', 'approved'),
+                                                ('rejected', 'rejected', 'replan_required'),
+                                                ('approved', 'stale', 'replan_required')]:
+            self.old = {'decision': decision, 'status': plan_status}
+            self.service.finish_approval({'run_id': 'r', 'decision': {'approvalId': 'ignored'}})
+            self.assertEqual(self.db.execute.call_args.args[1], (expected, 'r'))
+
+
+class AssemblyTests(unittest.TestCase):
+    def test_checkpoint_path_single_executor_and_close_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            data = DataStore(Path(directory) / 'supply.sqlite')
+            workflow = SupplyWorkflow(Mock(), data, Mock(), {})
+            try:
+                self.assertEqual(Path(workflow.checkpoint_db.execute('PRAGMA database_list').fetchone()[2]),
+                                 Path(directory) / 'supply-graph.sqlite')
+                self.assertIs(workflow.lock, workflow._workflow.lock)
+                self.assertIs(workflow.executor, workflow._workflow.executor)
+                workflow.process = Mock()
+                workflow.schedule('r').result(timeout=3)
+                workflow.process.assert_called_once_with('r')
+            finally:
+                workflow.close()
+                data.db.close()
+            with self.assertRaises(sqlite3.ProgrammingError):
+                workflow.checkpoint_db.execute('SELECT 1')
+            with self.assertRaises(RuntimeError):
+                workflow.executor.submit(lambda: None)

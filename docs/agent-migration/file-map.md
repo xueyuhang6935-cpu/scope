@@ -1,6 +1,6 @@
 # 文件与函数迁移映射
 
-核查起点：`6669e8d`。M1—M3 已完成，现追加 M4；后续阶段条目为职责边界，尚非已实施路径。
+核查起点：`6669e8d`。M1—M5b 已完成；M6、M7 尚未启动。
 
 ## 本批完整函数清单
 
@@ -52,20 +52,22 @@
 
 ## M5a API 与业务服务拆分
 
-`backend/investigation_routes.py:routes(service)` 保留 11 个端点路径、名称、参数与响应，委托给 `backend/investigation_service.py:InvestigationService`。原嵌套路由中的成员管理、调查列表、审计读取、撤回、审批列表、方案详情和审批决定成为服务方法，保留原 SQL、权限、事务和提交后调度顺序。main 直接挂载新路由，旧工作流入口显式兼容转发。
+`backend/investigation_routes.py:routes(service)` 保留 11 个端点路径、名称、参数与响应，委托给 `backend/investigation_service.py:InvestigationService`。原嵌套路由中的成员管理、调查列表、审计读取、撤回、审批列表、方案详情和审批决定成为服务方法，保留原 SQL、权限、事务和提交后调度顺序。main 直接挂载新路由，旧工作流入口在 M5b 作为组装与兼容门面。
 
-## M5b 工作流与恢复待迁归属
+## M5b 工作流与恢复实际归属
 
-| 模块 / 函数对象 | 未来归属及副作用 | 调用入口与验证 |
+| 模块 / 函数对象 | 实际归属及副作用 | 调用入口与验证 |
 | --- | --- | --- |
-| `SupplyWorkflow.__init__ / State` | 图与状态归 workflows；SQLite 打开、服务组装需留后端或传入 | main.create_app；启动和检查点兼容 |
-| `ensure / config_for / run_record / event / user_by_account` | 后端服务；DDL、查询、事务 | 工作流及路由；数据库集成 |
-| `access / authorize_investigation / read_evidence / validate_plan` | 后端授权及审批服务；查询、权限与版本校验 | 调查、工具及审批；越权/失效测试 |
-| `collect / investigate / plans / approval / finish` | 阶段控制归 workflows；取数、模型、写入通过服务 | LangGraph；节点、人工等待和回执测试 |
-| `replan / process / recover / close` | 编排与恢复归 workflows；执行器、数据库及资源清理先分离 | 启动恢复、工作线程；重启/重复动作测试 |
-| `record_stage / read_run / from_calculation / start_investigation` | 后端调查服务；读写和幂等 | supply 与 routes；状态与创建测试 |
-| `routes` 及内嵌端点 | 后端 API；请求授权、参数、响应 | FastAPI；接口回归 |
+| `SupplyWorkflow.__init__ / State` | State 与图在 `project/workflows/investigation.py`；后端 `supply_workflow.py` 打开原检查点并组装服务 | main.create_app；启动、路径与旧检查点恢复 |
+| `ensure / config_for / run_record / event / user_by_account` | `backend/investigation_service.py`；DDL、查询、事务 | 工作流及路由；原方法 AST 与 SQL 对照 |
+| `access / authorize_investigation / read_evidence / validate_plan` | 同上；授权、快照与审批规则不变 | 调查、工具及审批；原方法 AST、越权/失效测试 |
+| `collect / investigate / plans / approval / finish` | workflows 记录阶段并控制顺序；调用服务 `collect_data/run_investigation/save_plans/finish_approval`；approval 保留 interrupt | 真实 LangGraph；暂停、恢复、阻断分支及提交审批测试 |
+| `process / recover / close` | workflows；同步检查点、子调查递归、异常审计委托和单工作线程生命周期 | 恢复列表/持久化状态由服务提供；关闭线程后后端关闭 SQLite |
+| `replan` | 服务保持原子事务，含幂等键、权限、轮数与父子关系；调用时机和子调查执行归 workflows | 子调查重复投递、原方法 AST 对照；真实 PostgreSQL 用例仍受环境前提限制 |
+| `prepare_run / has_recovery_config / recoverable_runs / fail_run / interrupt_calls` | 从 process/recover 提取到服务；原 SQL、审计中断与错误写入 | workflows 注入边界；失败/恢复与 SQL 集合对照 |
+| `record_stage / read_run / from_calculation / start_investigation` | 后端调查服务；读写和幂等，提交后使用注入 schedule 回调 | supply 与 routes；检查点、审批和请求委托测试 |
+| `routes` 及内嵌端点 | `backend/investigation_routes.py`；业务体归服务 | 11 个端点 OpenAPI 与 M4 相同 |
 
 ## 明确保留
 
-本批不迁移前端、FastAPI 入口、认证、数据库、schema、业务计算、工作流、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M4 增加必要的迁移专项测试，不提前执行 M6 的测试整体搬迁。
+本批不迁移前端、FastAPI 应用入口、认证、数据库、schema、业务计算、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M5 增加必要的路由、事务与恢复专项测试，不提前执行 M6 的测试整体搬迁。

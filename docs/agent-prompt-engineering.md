@@ -4,7 +4,7 @@
 
 ## 报告与兼容
 
-模型报告的结构与引用校验实现位于 `project/agents/report_protocol.py`。`backend/investigation_report.py` 保留业务方案阻断和旧导入兼容转发；`backend/supply_workflow.py` 继续执行原有审批流程。当前任务摘要与上下文组装位于 `project/context/investigation.py`，后端在调用前负责来源快照与实时权限核查。迁移不改变报告协议、结论类型或旧报告展示方式。
+模型报告的结构与引用校验实现位于 `project/agents/report_protocol.py`。`backend/investigation_report.py` 保留业务方案阻断和旧导入兼容转发；`project/workflows/investigation.py` 控制审批等待和恢复，`backend/investigation_service.py` 执行原有审批校验与事务，`backend/supply_workflow.py` 负责组装。当前任务摘要与上下文组装位于 `project/context/investigation.py`，后端在调用前负责来源快照与实时权限核查。迁移不改变报告协议、结论类型或旧报告展示方式。
 
 M4 判断循环位于 `project/agents/investigator.py`，负责先规划、选择工具、修正输入、计划修订、预算收尾和报告提交。初始报告及模型消息由 context 组装，SQL/快照/历史证据分发由 `project/tools/investigation_dispatch.py` 执行。后端 `investigation_agent.py` 保留旧调用签名并组装能力，只把模式和三项预算选项传入核心；`investigation_model.py` 持有配置、凭证和 HTTP 会话，保留原超时、100000 字节响应上限、禁止重定向及无自动重试行为。测试 HTTP patch 路径改为 `backend.investigation_model.httpx.Client`。
 

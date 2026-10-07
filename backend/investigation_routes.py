@@ -61,4 +61,3 @@ def routes(service):
         return service.decide(user, plan_id, request.state.body)
 
     return router
-

@@ -35,6 +35,6 @@ Remove-Item Env:SCOPE_DATABASE_INTEGRATION -ErrorAction SilentlyContinue
 
 ## 提交与回退
 
-M0、M1、M2、M3、M4 各自提交。开始时已有 `AGENTS.md` 未提交修改及 `plan/20261007-152452.md` 未跟踪文件；保留其原始字节，不混入迁移提交。哈希记录在 `baseline.json`；M4 开始时再次记录于 `m4-before.json`。
+M0、M1、M2、M3、M4、M5a、M5b 各自提交。M5a 为 `ae9c277`，是 M5b 的开发回退点。开始时已有 `AGENTS.md` 未提交修改及 `plan/20261007-152452.md` 未跟踪文件；保留其原始字节，不混入迁移提交。哈希记录在 `baseline.json`；本批开始时再次记录于 `m5-before.json`。
 
 回退顺序为先 M5b、再 M5a、M4、M3、M2、M1，使用对应提交的 `git revert`，不硬重置。M0 文档可保留。由于本批不修改数据库与检查点结构，不需要数据库降级操作。现有未提交文件不参与回退。

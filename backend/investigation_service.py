@@ -1,18 +1,11 @@
-"""Single LangGraph orchestrator, durable approvals and scoped workspace membership."""
+"""Investigation business services, authorization and committed persistence."""
 import json
-import logging
-import sqlite3
 import threading
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import TypedDict
 
-from langgraph.graph import StateGraph, START, END
-from langgraph.types import interrupt, Command
-from langgraph.checkpoint.sqlite import SqliteSaver
 from psycopg.types.json import Jsonb
 
 from .common import APIError, iso
@@ -25,20 +18,10 @@ from .shortage import fingerprint, plain, timestamp, TABLES
 from .supply_planning import planning_snapshot, build_candidates
 
 
-class State(TypedDict, total=False):
-    run_id: str
-    bundle: dict
-    evidence: list
-    report: dict
-    plan_ids: list
-    decision: dict
-    blocked: bool
-    query_context: dict
-
-
 class InvestigationService:
-    def __init__(self, auth, data, monitor, env):
+    def __init__(self, auth, data, monitor, env, schedule):
         self.auth, self.data, self.monitor, self.env = auth, data, monitor, env
+        self.schedule = schedule
         with data.lock:
             data.db.executescript('''CREATE TABLE IF NOT EXISTS workflow_members (
                 workspace_id TEXT NOT NULL, account TEXT NOT NULL, role TEXT NOT NULL,
@@ -48,25 +31,10 @@ class InvestigationService:
                 CREATE TABLE IF NOT EXISTS workflow_permission_history (
                 id INTEGER PRIMARY KEY,workspace_id TEXT NOT NULL,account TEXT NOT NULL,
                 actor TEXT NOT NULL,details TEXT NOT NULL,created_at TEXT NOT NULL);''')
-        db_path = data.one('PRAGMA database_list')['file']
-        checkpoint_path = Path(db_path).with_name('supply-graph.sqlite')
-        self.checkpoint_db = sqlite3.connect(checkpoint_path, check_same_thread=False)
-        self.checkpointer = SqliteSaver(self.checkpoint_db)
         self.lock = threading.RLock()
         self.ready = False
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='supply-graph')
         data.db.execute('CREATE TABLE IF NOT EXISTS investigation_stages (run_id TEXT PRIMARY KEY, stage TEXT NOT NULL, updated_at TEXT NOT NULL)')
         InvestigationHarness(data, '', lambda: None)
-        graph = StateGraph(State)
-        for name, fn in [('collect', self.collect), ('investigate', self.investigate), ('plans', self.plans), ('approval', self.approval), ('finish', self.finish)]:
-            graph.add_node(name, fn)
-        graph.add_edge(START, 'collect')
-        graph.add_edge('collect', 'investigate')
-        graph.add_edge('investigate', 'plans')
-        graph.add_conditional_edges('plans', lambda s: END if s['blocked'] else 'approval')
-        graph.add_edge('approval', 'finish')
-        graph.add_edge('finish', END)
-        self.graph = graph.compile(checkpointer=self.checkpointer)
 
     def ensure(self):
         if self.ready:
@@ -111,8 +79,7 @@ class InvestigationService:
             raise APIError(404, '风险事件不存在。')
         return row
 
-    def collect(self, state):
-        self.record_stage(state, 'collect')
+    def collect_data(self, state):
         with connection(self.env) as db:
             run = self.run_record(db, state['run_id'])
             event = self.event(db, run['event_id'])
@@ -157,8 +124,7 @@ class InvestigationService:
         return {'workspace': run['workspace_id'], 'scenario': config['scenario_id'],
                 'asOf': config['as_of'], 'domains': domains, 'factories': run['input']['factories']}
 
-    def investigate(self, state):
-        self.record_stage(state, 'investigate')
+    def run_investigation(self, state):
         with connection(self.env, False) as db:
             run = self.run_record(db, state['run_id'])
             # Persist reservation BEFORE any external model request. Checkpoint
@@ -219,8 +185,7 @@ class InvestigationService:
             provenance = {**provenance, 'sourceType': 'supplier_statement', 'verified': False}
         return {**item, 'provenance': provenance}
 
-    def plans(self, state):
-        self.record_stage(state, 'plans')
+    def save_plans(self, state):
         blockers = plan_blockers(state['report'], state['bundle'])
         blocked = bool(blockers)
         state = {**state, 'report': {**state['report'], 'planBlockers': blockers}}
@@ -254,13 +219,7 @@ class InvestigationService:
                        (Jsonb(state['report']), 'manual_required' if blocked else 'awaiting_approval', run['id']))
         return {'plan_ids': identifiers, 'blocked': blocked, 'report': state['report']}
 
-    def approval(self, state):
-        self.record_stage(state, 'approval')
-        decision = interrupt({'runId': state['run_id'], 'planIds': state['plan_ids'], 'reason': '等待有权限的另一位用户审批'})
-        return {'decision': decision}
-
-    def finish(self, state):
-        self.record_stage(state, 'finish')
+    def finish_approval(self, state):
         # Never trust a resume payload as authority. Decisions come from committed approvals.
         with connection(self.env, False) as db:
             decision = db.execute('''SELECT a.decision,p.status FROM sc.plan_approvals a JOIN sc.candidate_plans p ON p.id=a.plan_id
@@ -321,69 +280,6 @@ class InvestigationService:
                        (child_id, run['event_id'], run['workspace_id'], run['requested_by'], key,
                         Jsonb({**run['input'], 'replanning': feedback})))
         return child_id
-
-    def process(self, run_id):
-        # ponytail: bounded demo uses one graph worker and a local durable saver;
-        # migrate the saver/leases together before deploying multiple app processes.
-        with self.lock:
-            try:
-                with connection(self.env, False) as db:
-                    run = self.run_record(db, run_id)
-                    if run['status'] not in ('queued','running','resuming','awaiting_approval','replan_required','replanned'):
-                        return
-                    db.execute("UPDATE sc.investigations SET status=CASE WHEN status='queued' THEN 'running' ELSE status END WHERE id=%s", (run_id,))
-                    approval = db.execute('SELECT a.id FROM sc.plan_approvals a JOIN sc.candidate_plans p ON p.id=a.plan_id WHERE p.run_id=%s LIMIT 1', (run_id,)).fetchone()
-                if run['status'] in ('replan_required', 'replanned'):
-                    child_id = self.replan(run_id)
-                    if child_id:
-                        self.process(child_id)
-                    return
-                config = {'configurable': {'thread_id': run_id}}
-                saved = self.graph.get_state(config)
-                if saved.values:
-                    # A crash can occur after the plans checkpoint but before the
-                    # approval node actually calls interrupt. Establish it first.
-                    if saved.next == ('approval',) and not saved.interrupts:
-                        self.graph.invoke(None, config, durability='sync')
-                        saved = self.graph.get_state(config)
-                    payload = Command(resume={'approvalId': approval['id']}) if approval and saved.next == ('approval',) else None
-                    if saved.next == ('approval',) and not approval:
-                        return
-                else:
-                    payload = {'run_id': run_id}
-                self.graph.invoke(payload, config, durability='sync')
-                child_id = self.replan(run_id)
-                if child_id:
-                    self.process(child_id)
-            except Exception as exc:
-                logging.getLogger(__name__).exception('Investigation failed: %s', run_id)
-                InvestigationHarness.interrupt(self.data, run_id)
-                try:
-                    with connection(self.env, False) as db:
-                        db.execute("UPDATE sc.investigations SET status='failed',error=%s,updated_at=now() WHERE id=%s",
-                            (exc.body['message'] if isinstance(exc, APIError) else '调查中断，请检查数据或重新调查；不会自动重复模型调用。', run_id))
-                except Exception:
-                    logging.getLogger(__name__).error('Investigation status could not be saved: %s', run_id)
-
-    def recover(self):
-        if not self.data.one('SELECT 1 FROM risk_monitor_configs LIMIT 1'):
-            return
-        try:
-            self.ensure()
-            spaces = [r['workspace_id'] for r in self.data.all('SELECT workspace_id FROM risk_monitor_configs')]
-            with connection(self.env) as db:
-                rows = db.execute("SELECT id FROM sc.investigations WHERE workspace_id=ANY(%s) AND status IN ('queued','running','resuming','awaiting_approval','replan_required')", (spaces,)).fetchall()
-            for row in rows:
-                InvestigationHarness(self.data, row['id'], lambda: None)
-                InvestigationHarness.interrupt(self.data, row['id'])
-                self.executor.submit(self.process, row['id'])
-        except Exception:
-            # No source DB must not prevent login/file import startup.
-            pass
-
-    def close(self):
-        self.executor.shutdown(wait=True)
-        self.checkpoint_db.close()
 
     def validate_plan(self, db, plan, run, user, approving=False):
         content = plan['content']
@@ -475,7 +371,7 @@ class InvestigationService:
                     db.execute("UPDATE sc.investigations SET status='replan_required',error=%s WHERE id=%s", ('聊天试算发现数据变化或方案失效，重新规划。', active['id']))
                     # Commit before scheduling so the graph sees the transition.
                     db.commit()
-                    self.executor.submit(self.process, active['id'])
+                    self.schedule(active['id'])
                     return {'riskId': event['id'], 'runId': active['id'], 'reused': False}
                 return {'riskId': event['id'], 'runId': active['id'], 'reused': True}
         run = self.start_investigation(user, event['id'], key, window_days=days, expected_snapshot=calculation['snapshotHash'], question=question)
@@ -520,7 +416,7 @@ class InvestigationService:
             db.execute("UPDATE sc.candidate_plans SET status='superseded' WHERE event_id=%s AND status IN ('candidate','approved')", (event_id,))
             db.execute("INSERT INTO sc.investigations(id,event_id,workspace_id,requested_by,request_id,status,input) VALUES(%s,%s,%s,%s,%s,'queued',%s)",
                 (run_id,event_id,event['workspace_id'],user['account'],key,Jsonb(body)))
-        self.executor.submit(self.process, run_id)
+        self.schedule(run_id)
         return {'id': run_id, 'status': 'queued'}
 
     def access_info(self, user, eventId=''):
@@ -658,7 +554,7 @@ class InvestigationService:
             approval = db.execute('SELECT * FROM sc.plan_approvals WHERE plan_id=%s', (plan_id,)).fetchone()
             grant=self.access(user,run['workspace_id'],'view')
         if needs_replan:
-            self.executor.submit(self.process, run['id'])
+            self.schedule(run['id'])
         return plain({**plan,'requestedBy':run['requested_by'],'validationError':error,'approval':approval,
                       'canApprove':self.permissions.can(user,run['workspace_id'],'approve',run['input']['factories'],amount=plan['content']['totalCost']) and user['account']!=run['requested_by'], 'report':run['report']})
 
@@ -697,12 +593,41 @@ class InvestigationService:
                 db.execute("UPDATE sc.candidate_plans SET status='superseded' WHERE run_id=%s AND id<>%s AND status='candidate'",(run['id'],plan_id))
                 db.execute("UPDATE sc.investigations SET status='resuming' WHERE id=%s",(run['id'],))
         if failure:
-            self.executor.submit(self.process,run['id'])
+            self.schedule(run['id'])
             raise APIError(409,failure)
-        self.executor.submit(self.process,run['id'])
+        self.schedule(run['id'])
         return {'id':approval_id,'decision':b['decision']}
 
     def routes(self):
         """Compatibility entry point; HTTP routes are defined separately."""
         from .investigation_routes import routes
         return routes(self)
+
+    def prepare_run(self, run_id):
+        with connection(self.env, False) as db:
+            run = self.run_record(db, run_id)
+            if run['status'] not in ('queued','running','resuming','awaiting_approval','replan_required','replanned'):
+                return
+            db.execute("UPDATE sc.investigations SET status=CASE WHEN status='queued' THEN 'running' ELSE status END WHERE id=%s", (run_id,))
+            approval = db.execute('SELECT a.id FROM sc.plan_approvals a JOIN sc.candidate_plans p ON p.id=a.plan_id WHERE p.run_id=%s LIMIT 1', (run_id,)).fetchone()
+        return run, approval
+
+    def fail_run(self, run_id, exc):
+        with connection(self.env, False) as db:
+            db.execute("UPDATE sc.investigations SET status='failed',error=%s,updated_at=now() WHERE id=%s",
+                (exc.body['message'] if isinstance(exc, APIError) else '调查中断，请检查数据或重新调查；不会自动重复模型调用。', run_id))
+
+    def has_recovery_config(self):
+        return bool(self.data.one('SELECT 1 FROM risk_monitor_configs LIMIT 1'))
+
+    def recoverable_runs(self):
+        self.ensure()
+        spaces = [r['workspace_id'] for r in self.data.all('SELECT workspace_id FROM risk_monitor_configs')]
+        with connection(self.env) as db:
+            rows = db.execute("SELECT id FROM sc.investigations WHERE workspace_id=ANY(%s) AND status IN ('queued','running','resuming','awaiting_approval','replan_required')", (spaces,)).fetchall()
+        return rows
+
+    def interrupt_calls(self, run_id, ensure_table=False):
+        if ensure_table:
+            InvestigationHarness(self.data, run_id, lambda: None)
+        InvestigationHarness.interrupt(self.data, run_id)
