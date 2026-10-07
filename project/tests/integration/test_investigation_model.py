@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import httpx
 
-from .investigation_agent import investigate
-from .investigation_model import model_session
+from backend.investigation_agent import investigate
+from backend.investigation_model import model_session
 
 
 class ModelTransportTests(unittest.TestCase):

@@ -9,7 +9,7 @@
 | prompts | 行为与输出规则 | M1：模板与加载器 |
 | context | 当前任务信息 | M2 已授权数据摘要；M4 初始报告与模型消息的纯组装 |
 | memory | 长期有用的信息 | 暂无长期记忆实现 |
-| tests | 程序检查 | 本次迁移专项；旧测试位置不变 |
-| evals | 任务质量评估 | M6 才迁移，当前仍用 backend.eval_supply_agent |
+| tests | 程序检查 | M6 核心检查与 integration 宿主集成测试；通用后端及浏览器测试保留原位 |
+| evals | 任务质量评估 | M6 固定案例、评分与人工审核；backend.eval_supply_agent 保留宿主 CLI |
 
-实际迁移状态以 `docs/agent-migration/status.md` 为准。本目录不读取 `.env` 或直接导入 Web 应用；业务权限、数据库和源快照筛选由后端负责。
+实际迁移状态以 `docs/agent-migration/status.md` 为准。运行时核心及评测核心不读取 `.env` 或直接导入 Web 应用；测试可导入后端验证集成。业务权限、数据库和源快照筛选由后端负责。运行命令见 [tests](tests/README.md) 和 [evals](evals/README.md)。

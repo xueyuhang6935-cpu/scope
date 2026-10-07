@@ -53,7 +53,7 @@
 ```powershell
 .\.venv\Scripts\python.exe -m unittest backend.test_supply
 $env:SCOPE_DATABASE_INTEGRATION = '1'
-.\.venv\Scripts\python.exe -m unittest backend.test_supply_workflow backend.test_shortage
+.\.venv\Scripts\python.exe -m unittest project.tests.integration.test_supply_workflow project.tests.integration.test_agent_loop backend.test_shortage
 npm run lint
 npx playwright test tests/assistant.spec.ts
 npm run build

@@ -10,9 +10,9 @@ import httpx
 import psycopg
 from dotenv import dotenv_values
 
-from .investigation_agent import investigate
-from .investigation_sql import InvestigationSQL, TABLES, validate_sql
-from .test_supply_workflow import report_args
+from backend.investigation_agent import investigate
+from backend.investigation_sql import InvestigationSQL, TABLES, validate_sql
+from .test_agent_loop import report_args
 
 
 class ValidationTests(unittest.TestCase):
@@ -89,7 +89,7 @@ class ValidationTests(unittest.TestCase):
 @unittest.skipUnless(os.getenv('SCOPE_DATABASE_INTEGRATION') == '1', 'Requires installed local read-only views')
 class DatabaseTests(unittest.TestCase):
     def setUp(self):
-        self.env = dotenv_values(Path(__file__).resolve().parents[1] / '.env')
+        self.env = dotenv_values(Path(__file__).resolve().parents[3] / '.env')
         self.scope = {'workspace': 'sql-test-workspace', 'scenario': 'supplier_delay', 'asOf': '2026-10-05T07:00:00+08:00',
                       'domains': {d: ['A'] for d in ('reference', 'inventory', 'purchase', 'quality', 'production', 'rules')}}
         self.tool = InvestigationSQL(self.env, lambda: self.scope)

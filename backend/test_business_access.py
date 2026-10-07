@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from fastapi.testclient import TestClient
 from . import test_data_import as fixtures
-from . import test_supply_workflow as workflow_fixtures
+from project.tests.integration import test_supply_workflow as workflow_fixtures
 from .auth import now, password_hash
 from .common import APIError
 from .main import create_app

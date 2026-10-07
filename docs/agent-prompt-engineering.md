@@ -28,12 +28,13 @@ M4 判断循环位于 `project/agents/investigator.py`，负责先规划、选�
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s backend -t . -p 'test_*.py' -q
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -q
 npm run lint
 npx playwright test tests/investigation-report.spec.ts tests/assistant.spec.ts
 .\.venv\Scripts\python.exe -X utf8 -m backend.eval_supply_agent
 ```
 
-评测有24个固定案例，覆盖范围限制、来源陈述、提示注入、SQL修复、截断、驳回、预算、无证据及伪造引用。默认离线响应模拟，只证明流程和协议符合预期，不证明真实模型理解能力。结果默认写入 `test-results/agent-eval-offline.json`，记录提示词版本、用量、延迟和无效调用。
+评测有24个固定案例，覆盖范围限制、来源陈述、提示注入、SQL修复、截断、驳回、预算、无证据及伪造引用。案例保存在 `project/evals/supply_agent_cases.json`，评分与人工审核在 `project/evals/supply_agent.py`；`backend.eval_supply_agent` 保留配置与模型能力组装，CLI 不变。冻结答案不进入运行时提示词或上下文。默认离线响应模拟，只证明流程和协议符合预期，不证明真实模型理解能力。结果默认写入 `test-results/agent-eval-offline.json`，记录提示词版本、用量、延迟和无效调用。
 
 真实模型评测需要显式运行，使用 `.env` 配置，会产生供应商调用费用；业务数据使用隔离的内存数据库固定样本，不查询生产业务库：
 

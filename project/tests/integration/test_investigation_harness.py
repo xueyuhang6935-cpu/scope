@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 import httpx
 
-from .data_store import DataStore
-from .investigation_agent import investigate
-from .investigation_harness import InvestigationHarness
+from backend.data_store import DataStore
+from backend.investigation_agent import investigate
+from backend.investigation_harness import InvestigationHarness
 
 
 class HarnessTests(unittest.TestCase):

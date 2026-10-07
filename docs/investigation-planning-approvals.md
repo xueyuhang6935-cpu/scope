@@ -68,7 +68,7 @@
 
 ```powershell
 $env:SCOPE_DATABASE_INTEGRATION='1'
-.venv/Scripts/python.exe -X utf8 -m unittest backend.test_supply_workflow backend.test_shortage backend.test_supply backend.test_database_connection backend.test_data_import backend.test_backend backend.test_wechat_mock -v
+.venv/Scripts/python.exe -X utf8 -m unittest project.tests.integration.test_supply_workflow project.tests.integration.test_agent_loop backend.test_shortage backend.test_supply backend.test_database_connection backend.test_data_import backend.test_backend backend.test_wechat_mock -v
 npm run lint
 npm run build
 npx playwright test tests/supply-live.spec.ts tests/supply.spec.ts tests/assistant.spec.ts --reporter=line

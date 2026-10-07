@@ -179,13 +179,13 @@ Scope/
 │   ├── components/         登录、注册、找回密码和账号页
 │   └── supply/             助手、风险、调查审批、数据与权限页面
 ├── backend/                FastAPI、业务计算、LangGraph、权限及 Python 测试
-│   ├── evals/              固定评测案例
-│   └── eval_supply_agent.py 离线／真实模型评测及人工审核入口
+│   └── eval_supply_agent.py 评测宿主组装与兼容 CLI
 ├── project/                Agent 核心（按阶段迁移）
 │   ├── agents/             报告结构与证据引用协议
 │   ├── context/            已授权任务数据的纯上下文组装
 │   ├── prompts/            提示词与内容版本加载器
-│   └── tests/              迁移专项检查
+│   ├── evals/              固定案例、评分与人工审核逻辑
+│   └── tests/              核心检查及 integration 宿主集成测试
 ├── tests/                  Playwright 页面测试与真实后端联调
 ├── scripts/                后端启动、模拟数据生成及历史存储维护
 ├── server/                 旧 Express 认证回退与历史对象存储工具
@@ -225,6 +225,7 @@ npm run lint
 npm run build
 Remove-Item Env:SCOPE_DATABASE_INTEGRATION -ErrorAction SilentlyContinue
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s backend -t . -p 'test_*.py' -v
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
 ```
 
 `npm run lint` 实际执行 `tsc --noEmit`。未设置 `SCOPE_DATABASE_INTEGRATION=1` 时，数据库集成测试会跳过，不能将其视为完整业务验证。
@@ -241,6 +242,7 @@ npx playwright test tests/auth-design.spec.ts tests/assistant.spec.ts tests/data
 ```powershell
 $env:SCOPE_DATABASE_INTEGRATION = '1'
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s backend -t . -p 'test_*.py' -v
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
 npm run test:supply
 ```
 
@@ -289,10 +291,10 @@ Playwright 使用 3010 端口的测试前端；`tests/supply-live.spec.ts` 另�
 
 `npm run start:legacy` 仅保留旧 Express 认证回退（需要 Node.js 24+），不提供当前完整供应链 API；日常开发与运行使用 FastAPI 入口。
 
-Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。新增专项测试运行：
+Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。Agent 核心与宿主集成测试运行：
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
 ```
 
-M0—M5b 已完成：提示词加载器在 `project/prompts/loader.py`，上下文及调查初始消息组装在 `project/context/investigation.py`，模型报告协议在 `project/agents/report_protocol.py`，Agent 判断循环在 `project/agents/investigator.py`；工具分发、SQL 校验与调用保护位于 `project/tools/`，LangGraph 编排和恢复位于 `project/workflows/investigation.py`。后端保留 API、模型请求、授权、业务事务、数据库连接、审计和检查点资源组装。旧检查点路径、节点和状态保持兼容；评测入口及旧测试尚未整体迁移。两组 Python 测试需分别运行，不能用后端测试发现命令代替 project 专项检查。
+M0—M6 已完成：提示词加载器在 `project/prompts/loader.py`，上下文及调查初始消息组装在 `project/context/investigation.py`，模型报告协议在 `project/agents/report_protocol.py`，Agent 判断循环在 `project/agents/investigator.py`；工具分发、SQL 校验与调用保护位于 `project/tools/`，LangGraph 编排和恢复位于 `project/workflows/investigation.py`。后端保留 API、模型请求、授权、业务事务、数据库连接、审计和检查点资源组装。旧检查点路径、节点和状态保持兼容。M6 将 Agent 宿主测试集中到 `project/tests/integration/`，固定案例与评分逻辑迁入 `project/evals/`，原评测 CLI 保留为后端组装入口。两组 Python 测试需分别运行，不能仅运行 backend 发现命令；分类见 [测试说明](project/tests/README.md)。M7 尚未启动。

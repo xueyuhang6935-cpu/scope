@@ -79,6 +79,8 @@ class ContextReportTests(unittest.TestCase):
                         'import project.tools.investigation_sql; import project.tools.executor; '
                         'import project.agents.investigator; import project.tools.investigation_dispatch; '
                         'import project.workflows.investigation; '
+                        'assert "project.evals.supply_agent" not in sys.modules; '
+                        'import project.evals.supply_agent; '
                         'assert not any(n == "backend" or n.startswith("backend.") for n in sys.modules)'],
                        check=True, capture_output=True)
 

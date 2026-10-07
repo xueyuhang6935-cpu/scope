@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import psycopg
 
-from .data_store import DataStore
-from .investigation_harness import InvestigationHarness
-from .investigation_sql import InvestigationSQL, ROLE
+from backend.data_store import DataStore
+from backend.investigation_harness import InvestigationHarness
+from backend.investigation_sql import InvestigationSQL, ROLE
 
 
 class AdapterTests(unittest.TestCase):

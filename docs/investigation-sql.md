@@ -81,10 +81,10 @@ SQL 证据保留查询时的数据域／工厂范围，报告或下一次调用�
 
 ```powershell
 $env:SCOPE_DATABASE_INTEGRATION='1'
-.\.venv\Scripts\python.exe -m unittest backend.test_investigation_sql backend.test_supply_workflow backend.test_shortage -v
+.\.venv\Scripts\python.exe -m unittest project.tests.integration.test_investigation_sql project.tests.integration.test_supply_workflow project.tests.integration.test_agent_loop backend.test_shortage -v
 npm run lint
 ```
 
 模型循环测试使用模拟 HTTP 响应，不消耗外部模型调用。数据库测试使用真实本地 PostgreSQL；工作空间隔离测试仅插入并清理自身随机标识的测试记录。
 
-统一授权和中断持久化检查：`.\.venv\Scripts\python.exe -m unittest backend.test_investigation_harness -v`。工作流测试同时验证报告落库前撤销数据域权限以及审计接口读取。
+统一授权和中断持久化检查：`.\.venv\Scripts\python.exe -m unittest project.tests.integration.test_investigation_harness -v`。工作流测试同时验证报告落库前撤销数据域权限以及审计接口读取。

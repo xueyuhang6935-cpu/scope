@@ -11,11 +11,11 @@ from unittest.mock import Mock, patch
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from .common import APIError, reply
-from .investigation_routes import routes
-from .investigation_service import InvestigationService
-from .data_store import DataStore
-from .supply_workflow import SupplyWorkflow
+from backend.common import APIError, reply
+from backend.investigation_routes import routes
+from backend.investigation_service import InvestigationService
+from backend.data_store import DataStore
+from backend.supply_workflow import SupplyWorkflow
 
 
 class RouteTests(unittest.TestCase):

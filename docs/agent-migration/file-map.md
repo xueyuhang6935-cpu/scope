@@ -1,6 +1,6 @@
 # 文件与函数迁移映射
 
-核查起点：`6669e8d`。M1—M5b 已完成；M6、M7 尚未启动。
+核查起点：`6669e8d`。M1—M6 已完成；M7 尚未启动。
 
 ## 本批完整函数清单
 
@@ -25,7 +25,7 @@
 
 `supply_model` 和调查核心的提示词导入使用新路径；M2 `supply` 对纯上下文函数、调查核心对报告协议及相关测试也使用新路径。纯兼容对象显式转发；需要宿主能力的旧入口负责组装。M4 调查 HTTP 模拟 patch 改为 `backend.investigation_model.httpx.Client`，时钟 patch 为 `project.agents.investigator.time.monotonic`；范围解析的模拟入口保持不变。
 
-路径引用核查覆盖 README、docs、backend、tests、scripts；历史 `plan/` 与 T01 基线保留当时路径。当前专题说明随迁移更新。`backend.eval_supply_agent` 及案例路径本批保留，M6 再迁移。
+路径引用核查覆盖 README、docs、backend、tests、scripts；历史 `plan/` 与 T01 基线保留当时路径。当前专题说明随迁移更新。M6 已迁移案例与评测核心，`backend.eval_supply_agent` 保留为宿主 CLI。
 
 ## M3 工具与调用保护
 
@@ -70,4 +70,18 @@
 
 ## 明确保留
 
-本批不迁移前端、FastAPI 应用入口、认证、数据库、schema、业务计算、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M5 增加必要的路由、事务与恢复专项测试，不提前执行 M6 的测试整体搬迁。
+不迁移前端、FastAPI 应用入口、认证、数据库、schema、业务计算。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M5 增加的路由、事务与恢复专项测试在 M6 按下表整理。
+
+## M6 测试与评测归属
+
+| 原位置 | 新位置与边界 |
+| --- | --- |
+| `backend/test_investigation_{adapters,harness,model,routes,sql}.py` | 同名文件迁入 `project/tests/integration/`；适配器、审计、HTTP、API/事务及 SQL 集成，保留断言与跳过规则 |
+| `backend/test_supply_workflow.py:AgentTests/report_args` | `project/tests/integration/test_agent_loop.py`；模拟 HTTP 判断循环与报告辅助函数 |
+| `backend/test_supply_workflow.py:WorkflowTests` | `project/tests/integration/test_supply_workflow.py`；真实 PostgreSQL 生命周期；SQL、权限测试共享引用更新 |
+| `backend/evals/supply_agent_cases.json` | `project/evals/supply_agent_cases.json`；24 个固定案例字节不变 |
+| `backend/eval_supply_agent.py` 的样本、模拟响应、评分和审核 | `project/evals/supply_agent.py`；不导入后端或读取配置，能力由宿主注入 |
+| `backend/eval_supply_agent.py` CLI、模型替换与配置 | 原位置保留薄组装；参数、结果结构与退出码不变，只有显式 live 才读取配置 |
+| `project/tests/test_evals.py` | 新增 4 项选择、配置门禁、失败退出与人工审核检查；边界检查扩展至评测核心 |
+
+通用后端测试仍在 `backend/`，浏览器测试仍在 `tests/`。原测试模块不保留发现包装，避免重复计数；评测不被运行时核心导入。M6 新旧用例映射共 145 项全部保留，新增 4 项，迁移函数与辅助函数共 93 个 AST 在规范化导入及文件根路径后一致。
