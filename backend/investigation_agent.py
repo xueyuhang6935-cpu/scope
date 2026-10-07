@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from .supply_model import configured
-from .supply_prompts import INVESTIGATOR_PROMPT, INVESTIGATOR_PROMPT_VERSION
+from project.prompts.loader import INVESTIGATOR_PROMPT, INVESTIGATOR_PROMPT_VERSION
 from .investigation_report import REPORT_SCHEMA, validate_report
 from .investigation_sql import TABLES, validate_sql
 

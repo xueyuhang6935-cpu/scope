@@ -102,7 +102,7 @@ npm run dev
 
 模型密钥只在服务端配置，不使用 `VITE_` 前缀。规则模式可完成缺料计算、调查试算和人工审批；模型解析与模型调查是两个独立开关。模型调用结果或用量未知时不自动重放请求。
 
-范围解析与调查提示词分别位于 `backend/prompts/scope_parser.txt` 和 `backend/prompts/investigator.txt`。提示词版本含内容摘要，写入解析元数据、调查报告和工具审计；修改提示词后需重启后端。调查预算按每轮关联调查计算，单次模型调用的耗时或供应商用量可能跨越本地阈值，不能将其视为供应商计费硬上限。
+范围解析与调查提示词分别位于 `project/prompts/scope_parser.txt` 和 `project/prompts/investigator.txt`。提示词版本含内容摘要，写入解析元数据、调查报告和工具审计；修改提示词后需重启后端。调查预算按每轮关联调查计算，单次模型调用的耗时或供应商用量可能跨越本地阈值，不能将其视为供应商计费硬上限。
 
 ## 接入供应链场景
 
@@ -177,9 +177,11 @@ Scope/
 │   ├── components/         登录、注册、找回密码和账号页
 │   └── supply/             助手、风险、调查审批、数据与权限页面
 ├── backend/                FastAPI、业务计算、LangGraph、权限及 Python 测试
-│   ├── prompts/            范围解析与调查提示词
 │   ├── evals/              固定评测案例
 │   └── eval_supply_agent.py 离线／真实模型评测及人工审核入口
+├── project/                Agent 核心（按阶段迁移）
+│   ├── prompts/            提示词与内容版本加载器
+│   └── tests/              迁移专项检查
 ├── tests/                  Playwright 页面测试与真实后端联调
 ├── scripts/                后端启动、模拟数据生成及历史存储维护
 ├── server/                 旧 Express 认证回退与历史对象存储工具
@@ -282,3 +284,9 @@ Playwright 使用 3010 端口的测试前端；`tests/supply-live.spec.ts` 另�
 `docs/investigation-progress.md`、`docs/verified-investigation-report.md`、`docs/deepseek-runtime.md` 和 `docs/model-chat-planning.md` 属于历史订单分析实现，不能将其中的预算、报告协议或工具名称直接用于当前供应链 Agent；当前以 `docs/agent-prompt-engineering.md` 与 `docs/investigation-sql.md` 为准。
 
 `npm run start:legacy` 仅保留旧 Express 认证回退（需要 Node.js 24+），不提供当前完整供应链 API；日常开发与运行使用 FastAPI 入口。
+
+Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。新增专项测试运行：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
+```

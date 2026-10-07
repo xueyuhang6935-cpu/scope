@@ -1,6 +1,6 @@
 # 调查提示词与报告协议
 
-范围解析和调查提示词分别位于 `backend/prompts/scope_parser.txt`、`backend/prompts/investigator.txt`。`supply_prompts.py` 将版本及内容摘要写入解析元数据、调查报告和工具审计；修改提示词后重启后端。
+范围解析和调查提示词分别位于 `project/prompts/scope_parser.txt`、`project/prompts/investigator.txt`。`project/prompts/loader.py` 将版本及内容摘要写入解析元数据、调查报告和工具审计；修改提示词后重启后端。
 
 ## 报告与兼容
 

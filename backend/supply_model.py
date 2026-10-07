@@ -6,7 +6,7 @@ import httpx
 
 from .supply_analysis import INTENTS, PERIODS, validate_plan
 from .supply_context import ACTIONS
-from .supply_prompts import SCOPE_PROMPT, SCOPE_PROMPT_VERSION
+from project.prompts.loader import SCOPE_PROMPT, SCOPE_PROMPT_VERSION
 
 
 def configured(env):
