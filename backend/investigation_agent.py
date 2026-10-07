@@ -9,7 +9,7 @@ import httpx
 
 from .supply_model import configured
 from project.prompts.loader import INVESTIGATOR_PROMPT, INVESTIGATOR_PROMPT_VERSION
-from .investigation_report import REPORT_SCHEMA, validate_report
+from project.agents.report_protocol import REPORT_SCHEMA, validate_report
 from .investigation_sql import TABLES, validate_sql
 
 

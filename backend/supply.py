@@ -14,7 +14,8 @@ from .business_access import current_scope
 from .data_import import require_user
 from .supply_analysis import INTENTS, analyze, propose, validate_plan, request_questions, plan_questions, action_questions
 from .supply_model import configured, propose_with_model
-from .supply_context import compact_task, focus_context, followup, grounded_answer, requested_action, ACTIONS
+from .supply_context import followup, requested_action, ACTIONS
+from project.context.investigation import compact_task, focus_context, grounded_answer
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS supply_threads (

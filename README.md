@@ -180,6 +180,8 @@ Scope/
 │   ├── evals/              固定评测案例
 │   └── eval_supply_agent.py 离线／真实模型评测及人工审核入口
 ├── project/                Agent 核心（按阶段迁移）
+│   ├── agents/             报告结构与证据引用协议
+│   ├── context/            已授权任务数据的纯上下文组装
 │   ├── prompts/            提示词与内容版本加载器
 │   └── tests/              迁移专项检查
 ├── tests/                  Playwright 页面测试与真实后端联调
@@ -290,3 +292,5 @@ Agent 目录迁移状态见 [迁移记录](docs/agent-migration/status.md)。新
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 -m unittest discover -s project/tests -t . -p 'test_*.py' -v
 ```
+
+M0—M2 已完成：提示词加载器在 `project/prompts/loader.py`，当前上下文组装在 `project/context/investigation.py`，模型报告结构与引用校验在 `project/agents/report_protocol.py`。旧后端模块仅对已迁出的对象提供兼容转发；业务意图解析、权限复核和方案阻断继续留在后端。调查循环、SQL 工具、LangGraph 编排及评测入口尚未迁移。两组 Python 测试需分别运行，不能用后端测试发现命令代替 project 专项检查。

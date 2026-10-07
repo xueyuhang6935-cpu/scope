@@ -68,7 +68,7 @@ class SupplyTests(unittest.TestCase):
         self.assertEqual(result['result']['answer'], '建议核对来源批次。')
 
     def test_focused_record_after_first_five_and_legacy_report_context(self):
-        from .supply_context import compact_task, focus_context
+        from project.context.investigation import compact_task, focus_context
         rows = [{'factory': 'A', 'material': f'P{i:03}', 'quantity': i} for i in range(10)]
         task = compact_task({'id': 'task', 'text': '查P009', 'status': 'completed',
             'plan_json': json.dumps({'factory': 'A', 'material': 'P009'}), 'result_json': json.dumps({'records': rows}),
@@ -81,7 +81,7 @@ class SupplyTests(unittest.TestCase):
         self.assertEqual(context['focus']['snapshot'], {'snapshotHash': 'saved'})
 
     def test_report_memory_keeps_open_questions_and_rejection_without_promoting_hypotheses(self):
-        from .supply_context import focus_context
+        from project.context.investigation import focus_context
         previous = {'id': 'task', 'plan': {}, 'source': {}, 'result': {}}
         run = {'id': 'run', 'report': {'status': 'partial', 'stopReason': '原因未查清', 'facts': [],
             'modelSummary': {'claims': [{'kind': 'reported', 'statement': '供应商称设备故障', 'evidenceIds': ['s']}],
@@ -412,7 +412,8 @@ class SupplyTests(unittest.TestCase):
 
 class RequestScopeTests(unittest.TestCase):
     def test_followup_period_and_missing_evidence(self):
-        from .supply_context import followup, grounded_answer
+        from .supply_context import followup
+        from project.context.investigation import grounded_answer
         scope = validate_plan({}, 'A')
         context = {'previous': {'id': 'test', 'plan': {**scope, 'intent': 'readiness', 'material': 'P001', 'period': '未来三天'}, 'status': 'insufficient_data', 'result': {'summary': '数据不足', 'missing': ['生产需求']}}}
         explanation, effective, text = followup('那未来一周呢', scope, context)

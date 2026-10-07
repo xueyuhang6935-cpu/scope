@@ -558,7 +558,7 @@ class AgentTests(unittest.TestCase):
         self.assertTrue(plan_blockers(report, bundle))
 
     def test_claim_validation_and_legacy_fields_are_derived(self):
-        from .investigation_report import validate_report
+        from project.agents.report_protocol import validate_report
         evidence = {'inventory_snapshots:stock': {'record': {'truncated': True}}}
         for args in (report_args(), report_args(kind='reported'), report_args(kind='inferred'),
                      report_args(status='partial'), report_args(refs=['fake'])):

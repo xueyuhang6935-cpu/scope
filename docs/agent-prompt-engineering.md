@@ -4,6 +4,8 @@
 
 ## 报告与兼容
 
+模型报告的结构与引用校验实现位于 `project/agents/report_protocol.py`。`backend/investigation_report.py` 保留业务方案阻断和旧导入兼容转发；`backend/supply_workflow.py` 继续执行原有审批流程。当前任务摘要与上下文组装位于 `project/context/investigation.py`，后端在调用前负责来源快照与实时权限核查。迁移不改变报告协议、结论类型或旧报告展示方式。
+
 新调用必须使用 `status`、`claims`、`unresolvedQuestions`、`nextSteps`。结论类型为 `observed`（直接观察）、`reported`（外部陈述）、`inferred`（推断）；每条必须引用实际读取的证据，后两类及截断结果须说明局限。`complete` 不允许未解问题；`partial` 必须说明未完成事项，无证据时可以没有结论。
 
 兼容字段 `summary`、`evidenceIds` 从结论派生。旧持久化报告继续按原格式展示，不迁移数据库。引用有效性不等于语义证明；关键缺料数值、费用及可行性仍由确定性结果展示，不通过模型自由文本重新计算。
