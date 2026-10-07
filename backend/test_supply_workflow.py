@@ -337,7 +337,7 @@ class WorkflowTests(unittest.TestCase):
                 {'id': str(len(seen)), 'type': 'function', 'function': {'name': name, 'arguments': json.dumps(args)}}]}}]})
         client = httpx.Client(transport=httpx.MockTransport(handler))
         self.app.state.workflow.env.update(SUPPLY_INVESTIGATOR='model', SUPPLY_MODEL='test', SUPPLY_MODEL_API_KEY='test', SUPPLY_MODEL_BASE_URL='https://model.test')
-        with patch('backend.investigation_agent.httpx.Client', return_value=client):
+        with patch('backend.investigation_model.httpx.Client', return_value=client):
             run = self.start_run()
         self.assertEqual(run['report']['modelCalls'], 4)
         sql_evidence = next(e for e in run['report']['evidence'] if e['id'].startswith('sql:'))
@@ -468,7 +468,7 @@ class AgentTests(unittest.TestCase):
         client = httpx.Client(transport=httpx.MockTransport(handler))
         if evidence is None:
             evidence = [{'id': 'inventory_snapshots:stock', 'table': 'inventory_snapshots', 'record': {'quantity': '400'}}]
-        with patch('backend.investigation_agent.httpx.Client', return_value=client):
+        with patch('backend.investigation_model.httpx.Client', return_value=client):
             report = investigate({'target': None, 'missing': [], 'candidates': candidates or [], 'replanning': replanning}, evidence,
                 {'SUPPLY_INVESTIGATOR': 'model', 'SUPPLY_MODEL': 'test', 'SUPPLY_MODEL_API_KEY': 'fake-test-key', 'SUPPLY_MODEL_BASE_URL': 'https://model.test', 'SUPPLY_AGENT_MAX_ROUNDS': '8', **(env or {})},
                 evidence_reader=evidence_reader)
@@ -490,7 +490,7 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(len(calls), 5)
         self.assertEqual([t['function']['name'] for t in calls[-1]['tools']], ['submit_report'])
         self.assertTrue(report['manualRequired'])
-        with patch('backend.investigation_agent.httpx.Client') as client:
+        with patch('backend.investigation_model.httpx.Client') as client:
             report = investigate({'target': None, 'missing': [], 'candidates': []}, [], {'SUPPLY_INVESTIGATOR': 'model'}, model_allowed=False)
             client.assert_not_called()
             self.assertTrue(report['manualRequired'])
@@ -528,7 +528,7 @@ class AgentTests(unittest.TestCase):
             calls.append(request)
             raise httpx.ReadTimeout('unknown response')
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        with patch('backend.investigation_agent.httpx.Client', return_value=client):
+        with patch('backend.investigation_model.httpx.Client', return_value=client):
             report = investigate({'target': None, 'missing': [], 'candidates': []}, [],
                 {'SUPPLY_INVESTIGATOR': 'model', 'SUPPLY_MODEL': 'test', 'SUPPLY_MODEL_API_KEY': 'test'})
         self.assertEqual(len(calls), 1)
@@ -587,7 +587,7 @@ class AgentTests(unittest.TestCase):
     def test_time_budget_reserves_partial_report(self):
         partial = {'status': 'partial', 'claims': [], 'unresolvedQuestions': ['时间不足，尚未取证'], 'nextSteps': []}
         # Clock calls: start, first-loop, request timeout, response, second-loop, timeout, response.
-        with patch('backend.investigation_agent.time.monotonic', side_effect=[0, 0, 0, 1, 11, 11, 12]):
+        with patch('project.agents.investigator.time.monotonic', side_effect=[0, 0, 0, 1, 11, 11, 12]):
             report, calls = self.run_agent([('submit_report', partial)], env={'SUPPLY_AGENT_MAX_SECONDS': '15'})
         self.assertEqual(report['status'], 'partial')
         self.assertEqual([s['function']['name'] for s in calls[-1]['tools']], ['submit_report'])

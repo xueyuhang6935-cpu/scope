@@ -2,6 +2,8 @@
 
 M3 目录边界：`project/tools/investigation_sql.py` 定义工具声明、白名单、SQL 校验、结果与错误协议；`project/tools/executor.py` 执行调用保护并委托审计。后端 `investigation_sql.py` 注入专用受限连接，`investigation_audit.py` 保存 SQLite 审计，`investigation_harness.py` 保留工作流兼容入口。安装器仍在后端，权限计算仍由现有业务授权提供；表结构、工具返回字段和预算不变。
 
+M4 判断循环已迁入 `project/agents/investigator.py`；工具分发与 Agent 侧的表字段读取门禁位于 `project/tools/investigation_dispatch.py`，SQL 工具自身的授权和门禁仍保留。模型 HTTP 请求由后端注入，Agent 核心不接收密钥。
+
 调查仍由一个 Agent 和现有 LangGraph 编排。模型模式下，`get_database_schema` 提供授权表目录和字段；`execute_sql` 实际查询 PostgreSQL；模型可以根据结果或错误继续查询，最后通过 `submit_report` 引用 `sql:` 证据编号。
 
 原来的三个无参数证据读取工具在模型查询模式下不再注册，避免继续返回固定证据摘录。`simulate_plan` 保留为读取确定性候选方案的工具，不接受模型方案参数；SQL 不取代缺料计算、方案试算或审批。

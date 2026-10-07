@@ -1,6 +1,6 @@
 # 文件与函数迁移映射
 
-核查起点：`6669e8d`。M1、M2 已完成，现追加 M3；后续阶段条目为职责边界，尚非已实施路径。
+核查起点：`6669e8d`。M1—M3 已完成，现追加 M4；后续阶段条目为职责边界，尚非已实施路径。
 
 ## 本批完整函数清单
 
@@ -23,7 +23,7 @@
 
 `supply.SupplyService.conversation_context` 负责读 SQLite、核查每条历史记录权限及源快照一致性、选择六条近期摘要；`enrich_context/check_context` 读取调查并复核授权。这些方法留在后端，只有已授权数据传给 project/context。纯函数不接收数据库、请求对象或 `.env`。
 
-`supply_model` 和 `investigation_agent` 的提示词导入改为新路径；M2 `supply` 对纯上下文函数、`investigation_agent` 对报告协议及相关测试也改为新路径。旧模块只为外部兼容显式转发已迁出的对象。现有 HTTP 模拟 patch 仍指向 `backend.supply`、`backend.investigation_agent.httpx.Client`，无需更改模型模块位置。
+`supply_model` 和调查核心的提示词导入使用新路径；M2 `supply` 对纯上下文函数、调查核心对报告协议及相关测试也使用新路径。纯兼容对象显式转发；需要宿主能力的旧入口负责组装。M4 调查 HTTP 模拟 patch 改为 `backend.investigation_model.httpx.Client`，时钟 patch 为 `project.agents.investigator.time.monotonic`；范围解析的模拟入口保持不变。
 
 路径引用核查覆盖 README、docs、backend、tests、scripts；历史 `plan/` 与 T01 基线保留当时路径。当前专题说明随迁移更新。`backend.eval_supply_agent` 及案例路径本批保留，M6 再迁移。
 
@@ -38,6 +38,18 @@
 | `InvestigationHarness.check/start/finish/set_scope/records` | `project/tools/executor.py`；实时授权复核、生命周期，存储委托 | Agent 调用前后保护；旧撤权、范围变化及失败审计测试 |
 | 审计表初始化、写入、读取与 `interrupt` | `backend/investigation_audit.py`；原 SQL 原样保留 | `backend/investigation_harness.py` 组装存储；临时 SQLite 重启、中断隔离与范围留存测试 |
 
+## M4 Agent 判断循环
+
+| 原对象 | 实际归属与副作用 | 调用方与验证 |
+| --- | --- | --- |
+| `investigation_agent.investigate`，内嵌 `stop/budget/feedback/repair` | `project/agents/investigator.py`；规划、预算、修正、停止、报告提交；调用注入能力 | 后端兼容组装入口；旧判断测试及新增直接注入测试 |
+| 初始事实、来源陈述、报告与模型消息 | `project/context/investigation.py` 的 `initial_report/investigation_messages`；纯组装 | 判断循环；与旧表达式 AST 一致 |
+| SQL/证据展开/缓存工具分发与已读集合 | `project/tools/investigation_dispatch.py` 的 `InvestigationTools`；通过已有工具/证据读取能力调用，按原顺序反馈、授权与登记 | 判断循环；schema 门禁、截断、证据引用及撤权测试 |
+| HTTP 客户端、凭证、流式响应读取 | `backend/investigation_model.model_session`；注入返回请求函数的上下文管理器 | 后端组装；请求协议、资源释放、响应大小/时间限制、无重试检查 |
+| 原 `backend.investigation_agent.investigate` 签名 | 保留兼容组装；实时配置可用性回调，过滤为模式及三项非密钥预算参数 | 工作流及评测继续经后端组装，不把配置或存储引入 project |
+
+原有 backend 测试及 eval 数据没有整体移动，只调整模拟 patch 指向真正的 HTTP 适配器；M6 再处理测试与评测目录。M4 对照 M3 的 24 个固定案例（10 个 Agent、14 个范围解析），请求体和输出均一致。
+
 ## 后续混合模块的逐函数归属（本次不动）
 
 | 模块 / 函数对象 | 未来归属及副作用 | 调用入口与验证 |
@@ -49,8 +61,7 @@
 | `replan / process / recover / close` | 编排与恢复归 workflows；执行器、数据库及资源清理先分离 | 启动恢复、工作线程；重启/重复动作测试 |
 | `record_stage / read_run / from_calculation / start_investigation` | 后端调查服务；读写和幂等 | supply 与 routes；状态与创建测试 |
 | `routes` 及内嵌端点 | 后端 API；请求授权、参数、响应 | FastAPI；接口回归 |
-| `investigation_agent.investigate` 及内嵌 stop/budget/feedback/repair | M4 拆决策入 agents，上下文入 context，工具分发入 tools；模型请求及审计副作用需显式边界 | SupplyWorkflow.investigate、离线评测、模拟模型测试 |
 
 ## 明确保留
 
-本批不迁移前端、FastAPI 入口、认证、数据库、schema、业务计算、Agent 循环、工作流、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M3 增加必要的迁移专项测试，不提前执行 M6 的测试整体搬迁。
+本批不迁移前端、FastAPI 入口、认证、数据库、schema、业务计算、工作流、既有测试位置及评测入口。`skills/`、`memory/` 等没有独立实现的目录仅说明职责，不引入新能力。M4 增加必要的迁移专项测试，不提前执行 M6 的测试整体搬迁。

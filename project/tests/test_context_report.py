@@ -77,6 +77,7 @@ class ContextReportTests(unittest.TestCase):
                         'import sys; import project.context.investigation; '
                         'import project.agents.report_protocol; import project.prompts.loader; '
                         'import project.tools.investigation_sql; import project.tools.executor; '
+                        'import project.agents.investigator; import project.tools.investigation_dispatch; '
                         'assert not any(n == "backend" or n.startswith("backend.") for n in sys.modules)'],
                        check=True, capture_output=True)
 

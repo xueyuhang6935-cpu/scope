@@ -112,7 +112,7 @@ def offline_handler(case):
 
 def evaluate(case, env, live=False, review=None):
     started = time.monotonic()
-    module = 'backend.supply_model' if case['kind'] == 'scope' else 'backend.investigation_agent'
+    module = 'backend.supply_model' if case['kind'] == 'scope' else 'backend.investigation_model'
     manager = nullcontext() if live else patch(module + '.httpx.Client', return_value=httpx.Client(transport=httpx.MockTransport(offline_handler(case))))
     checks = {}
     with manager:

@@ -1,5 +1,10 @@
 """Pure bounded context over records already authorized by the host."""
 import json
+from decimal import Decimal
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from project.prompts.loader import INVESTIGATOR_PROMPT, INVESTIGATOR_PROMPT_VERSION
 
 
 def compact_task(row):
@@ -89,3 +94,29 @@ def grounded_answer(context):
         parts.append('建议：' + '；'.join(result['recommendations']))
     parts.append('以上依据上一轮保存的结果，未重新查询。现有证据不足以确定的根因或具体处置数量，需要进一步核实；调拨、下单等操作仍需走业务审批。')
     return '\n\n'.join(parts)
+
+
+def initial_report(bundle, evidence):
+    target = bundle['target']
+    facts = []
+    if target and target['computable']:
+        first = datetime.fromisoformat(target['firstShortageAt']).astimezone(ZoneInfo('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M（北京时间）') if target['firstShortageAt'] else '无'
+        facts.append({'statement': f"{target['factory']}厂 {target['material']} 首次缺料 {first}，最大缺口 {format(Decimal(target['shortage']).normalize(), 'f')} {target['unit']}。",
+                      'evidenceIds': target['evidenceIds']})
+    hypotheses = [{'statement': str(e['record'].get('feedback', '')), 'evidenceIds': [e['id']],
+                   'qualification': '供应商反馈，仅确认其如此报告，原因未经独立验证。'}
+                  for e in evidence if e['table'] == 'supplier_commitments' and e['record'].get('feedback')]
+    report = {'mode': 'rules', 'facts': facts, 'hypotheses': hypotheses, 'missing': bundle['missing'],
+              'trace': [], 'tokens': 0, 'modelCalls': 0, 'stopReason': '确定性工具调查完成', 'modelSummary': None,
+              'evidence': list(evidence), 'planRevisions': [], 'question': bundle.get('question', ''),
+              'status': 'complete', 'promptVersion': INVESTIGATOR_PROMPT_VERSION}
+    return report
+
+
+def investigation_messages(bundle, rounds):
+    target = bundle['target']
+    return [{'role': 'system', 'content': INVESTIGATOR_PROMPT.format(rounds=rounds)},
+                {'role': 'user', 'content': json.dumps({'factory': target['factory'] if target else None,
+                    'material': target['material'] if target else None, 'task': '调查缺料风险并比较处置方案',
+                    'question': bundle.get('question', ''), 'replanning': bundle.get('replanning'),
+                    'evidenceIndex': bundle.get('evidenceIndex', [])}, ensure_ascii=False)}]

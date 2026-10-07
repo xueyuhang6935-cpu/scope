@@ -61,7 +61,7 @@ class HarnessTests(unittest.TestCase):
             return httpx.Response(200, json={'choices': [{'message': {'tool_calls': [
                 {'id': str(count), 'type': 'function', 'function': {'name': name, 'arguments': json.dumps(args)}}]}}]})
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        with patch('backend.investigation_agent.httpx.Client', return_value=client):
+        with patch('backend.investigation_model.httpx.Client', return_value=client):
             report = investigate({'target': None, 'missing': [], 'candidates': [
                 {'actions': [{'kind': 'transfer', 'factory': 'A', 'fromFactory': 'B'}]}]}, [],
                 {'SUPPLY_INVESTIGATOR': 'model', 'SUPPLY_MODEL': 'test', 'SUPPLY_MODEL_API_KEY': 'test',

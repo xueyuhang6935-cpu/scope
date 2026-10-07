@@ -67,7 +67,7 @@ class ValidationTests(unittest.TestCase):
             return httpx.Response(200, json={'usage': {'total_tokens': 100}, 'choices': [{'message': {'tool_calls': [
                 {'id': str(index), 'type': 'function', 'function': {'name': name, 'arguments': json.dumps(args)}}]}}]})
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        with patch('backend.investigation_agent.httpx.Client', return_value=client):
+        with patch('backend.investigation_model.httpx.Client', return_value=client):
             report = investigate({'target': None, 'missing': [], 'candidates': []}, [],
                 {'SUPPLY_INVESTIGATOR': 'model', 'SUPPLY_MODEL': 'test', 'SUPPLY_MODEL_API_KEY': 'test', 'SUPPLY_MODEL_BASE_URL': 'https://model.test'}, query_tools=QueryTools())
         self.assertFalse(report.get('manualRequired'))
