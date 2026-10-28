@@ -9,8 +9,9 @@
 
 ## 工程入口
 
-- 前端：React + TypeScript + Vite，入口 `src/main.tsx`、`src/App.tsx`，业务页面位于 `src/supply/`。
+- 前端：React + TypeScript + Vite，入口 `src/main.tsx`、`src/App.tsx`，当前业务页面位于 `src/logistics/`；`src/supply/` 中的原版导航、编辑器、通用组件和空数据页面在正式前端复用；禁止恢复旧示例记录、模拟场景或供应链接口。
 - 后端：`scripts/start-backend.mjs` → `python -m backend` → `backend/main.py:create_app`，使用 FastAPI。
+- 正式入口仅认证和 `/api/logistics/`，授权在 `logistics_access.py`、历史源预览在 `logistics_data.py`。`create_legacy_test_app` 仅供 `NODE_ENV=test` 隔离回归，不作为运营入口。
 - 调查 API：`backend/investigation_routes.py`；授权、审批事务与调查持久化：`backend/investigation_service.py`、`business_access.py`。`backend/supply_workflow.py` 组装业务服务与检查点，`investigation_agent.py`、`investigation_harness.py` 注入模型与审计能力。
 - Agent 核心：`project/agents/`、`tools/`、`workflows/`、`context/`、`prompts/`；完整函数映射见 `docs/agent-migration/function-map.md`，兼容入口见 `docs/agent-migration/compatibility.md`。
 - 依赖版本以 `package-lock.json` 和 `requirements.lock.txt` 为准。复用 `.venv` 与已安装依赖，不擅自批量升级。
@@ -20,7 +21,8 @@
 
 | 位置 | 职责与修改边界 |
 | --- | --- |
-| `src/components/` | 登录、注册和账号等通用界面；物流业务逻辑优先放在 `src/supply/`，不要混入认证组件 |
+| `src/components/` | 登录、注册和账号等通用界面；物流业务逻辑放在 `src/logistics/`，不要混入认证组件 |
+| `src/logistics/` | 单空间页面与请求封装；权限由后端裁定，不展示旧场景示例 |
 | `src/supply/` | 业务页面、展示状态和交互；通过现有 `supplyApi.ts`、`dataApi.ts` 等请求封装访问后端，不连接数据库、不持有服务端密钥、不自行裁定授权或权威指标 |
 | `backend/main.py`、`auth.py`、`business_access.py`、`data_access.py` | 应用组装、认证与授权；场景功能通过既有入口接入，不为物流重写整套认证，也不绕过资源权限校验 |
 | `backend/database_connection.py`、`data_store.py` 及相关业务模块 | 数据访问与存储；SQL 使用参数化和受控对象名，业务读取经过授权及快照边界。现有文件并非严格分层，新增访问逻辑就近复用，不为套目录结构做无关迁移 |
@@ -94,9 +96,9 @@ Remove-Item Env:SCOPE_DATABASE_INTEGRATION -ErrorAction SilentlyContinue
 ```
 
 - Python 完整回归必须运行 backend 和 project 两组发现命令；只运行 backend 会漏掉 Agent 测试。测试分类见 `project/tests/README.md`，评测与人工审核见 `project/evals/README.md`。
-- 浏览器测试使用 `npx playwright test` 加相关 spec 路径。`tests/supply-live.spec.ts` 依赖真实 PostgreSQL；离线模拟通过不证明真实模型或数据库流程通过。
+- 浏览器测试使用 `npx playwright test`，当前为认证与物流界面。七份旧供应链 spec 已改名为 `*.legacy.ts` 留档；旧数据库测试须有独立旧页面和隔离数据库才可重新启用。离线模拟通过不证明真实模型或数据库流程通过。
 - 数据库集成仅在确认隔离测试库、所需场景和角色就绪后启用 `SCOPE_DATABASE_INTEGRATION=1`。不要为了让测试通过向当前源库重建旧场景。
-- 隔离前提就绪后设置 `$env:SCOPE_DATABASE_INTEGRATION = '1'`，重新运行上述两组 Python 发现命令；真实页面联调用 `npm run test:supply`，结束后移除该环境变量。浏览器联调不受 Python 集成开关控制，不在缺少前提时执行。
+- 旧核心隔离前提就绪后可设置 `$env:SCOPE_DATABASE_INTEGRATION = '1'`，重新运行上述两组 Python 发现命令，结束后移除该环境变量。当前界面使用 `npm run test:logistics`；旧页面不再提供运行入口，不向源库重建测试场景。
 - 实际运行过的检查才写通过；跳过、未运行、已有失败和新失败分开记录。历史失败见 T01 基线，不通过删除断言或放宽权限掩盖问题。
 - PowerShell 读取中文文档和路径清单时显式使用 UTF-8。测试启动优先隔离 SQLite、关闭自动监测与不必要的模型调用，退出时清理自己创建的进程树。
 - 完成物流任务后更新 `docs/logistics-execution/task-status.md` 和相关证据。代码、配置或测试变更在 `plan/` 新增简体中文时间戳记录，写清变更、实际验证和限制；不覆盖旧记录。

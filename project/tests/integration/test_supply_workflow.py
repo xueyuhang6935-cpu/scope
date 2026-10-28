@@ -294,7 +294,7 @@ class WorkflowTests(unittest.TestCase):
         self.login()
         self.grant()
         # Persistent pause survives process/service reconstruction.
-        from backend.main import create_app
+        from backend.main import create_legacy_test_app as create_app
         from fastapi.testclient import TestClient
         self.client.__exit__(None, None, None)
         self.app = create_app(self.env)

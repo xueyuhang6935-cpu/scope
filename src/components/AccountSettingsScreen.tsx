@@ -1,12 +1,17 @@
 import { BellRing, Camera, KeyRound, MessageSquare, ShieldCheck, UserRound } from 'lucide-react';
-import { Button, PageHeading, ScopedLink, StatusTag } from '../supply/components';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Link as ScopedLink } from 'react-router-dom';
+
+function Button(props: ButtonHTMLAttributes<HTMLButtonElement>) { return <button type="button" className="sp-button" {...props} />; }
+function PageHeading({ title }: { title: string }) { return <div className="sp-heading"><h1>{title}</h1></div>; }
+function StatusTag({ children }: { tone: string; children: ReactNode }) { return <span className="sp-status sp-status-warning">{children}</span>; }
 
 export default function AccountSettingsScreen({ currentUser }: { currentUser: string }) {
   return <>
     <PageHeading title="账号设置" />
     <section className="sp-account-profile" aria-label="账号信息">
       <div className="sp-account-avatar"><UserRound size={32} /></div>
-      <div><h2>{currentUser}</h2><p>SupplyPilot</p></div>
+      <div><h2>{currentUser}</h2><p>Scope</p></div>
       <Button disabled title="个人资料服务尚未接入"><Camera size={16} />编辑个人资料</Button>
     </section>
     <div className="sp-columns">

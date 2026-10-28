@@ -9,11 +9,11 @@
     "dev": "concurrently \"node scripts/start-backend.mjs --reload\" \"vite --port=3003 --host=0.0.0.0\"",
     "build": "vite build",
     "start": "node scripts/start-backend.mjs",
-    "start:legacy": "node server/index.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test:supply": "playwright test"
+    "test": "playwright test",
+    "test:logistics": "playwright test tests/logistics.spec.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",

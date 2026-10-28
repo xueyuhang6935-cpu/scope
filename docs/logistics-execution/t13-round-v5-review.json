@@ -1,0 +1,256 @@
+{
+  "development/courier-fixed-1.json": {
+    "goal_covered": false,
+    "note": "必要证据齐备，但自然语言判断和AOI对应错误；不能把工具数字正确当成报告正确。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母80及3/80与独立答案一致。"},
+      {"verdict": "pass", "reason": "80/0/0/93均为汇总原值。"},
+      {"verdict": "fail", "reason": "2/3约66.67%已过半，却写无单人逾期过半，直接错误回答集中性目标。"},
+      {"verdict": "pass", "reason": "12477的42可见、39完成、积压3、逾期2、临期及近期流量0与独立快照负荷计数一致；未推断容量。"},
+      {"verdict": "fail", "reason": "把三条逾期均写为AOI15322；9485的订单1763141实际为AOI14590。"},
+      {"verdict": "pass", "reason": "GPS可用数22616/33920、26448/33840与质量证据一致，局部缺失被声明。"}
+    ]
+  },
+  "development/courier-dynamic-1.json": {
+    "goal_covered": false,
+    "note": "占位人员参数未解析，缺少重点人员合格负荷证据，complete不能算目标完成。",
+    "claim_reviews": [
+      {"verdict": "fail", "reason": "3和80正确，但同一claim追加12477/2，只引汇总且主动承认未引分布；该引用不能支持新增人员结论。"},
+      {"verdict": "pass", "reason": "12477两条、9485一条、全局分母3及2/3集中性均有分布支持。"},
+      {"verdict": "pass", "reason": "人员分布支持积压3、逾期2、临期0；仅覆盖风险负荷子集，不补足要求的负荷取证。"},
+      {"verdict": "pass", "reason": "实际占位符查询返回0行；没有把空结果当12477零风险。"},
+      {"verdict": "pass", "reason": "GPS/坐标/窗口可用数与质量工具一致，声明局部缺失。"}
+    ]
+  },
+  "development/window-fixed-1.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、分母483与独立汇总一致。"},
+      {"verdict": "pass", "reason": "10440/15024/9485各1条，份额均1/3；不支持单人过半。"},
+      {"verdict": "pass", "reason": "三条逾期明细完整且分属三人，限定overdue范围。"},
+      {"verdict": "pass", "reason": "10440与15024的09:00–11:00相同，9485为06:00–08:00；没有推断其他任务或共同根因。"},
+      {"verdict": "pass", "reason": "15024积压32来自分布，区分积压量和逾期集中性，未作容量/因果判断。"}
+    ]
+  },
+  "development/window-dynamic-1.json": {
+    "goal_covered": false,
+    "note": "Token超限后的程序停止报告，非模型目标报告。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "程序只引用保存的积压483。"},
+      {"verdict": "pass", "reason": "程序只引用保存的临期0。"},
+      {"verdict": "pass", "reason": "程序只引用保存的逾期3。"},
+      {"verdict": "pass", "reason": "程序只引用保存的近期接单57。"},
+      {"verdict": "pass", "reason": "程序只引用保存的近期完成152。"}
+    ]
+  },
+  "development/truncated-fixed-1.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母483、临期0一致。"},
+      {"verdict": "pass", "reason": "首页2/3、截断，订单/人员/AOI及240/60分钟均与独立明细一致。"},
+      {"verdict": "pass", "reason": "第2页补5246747，人员15024、AOI6359、逾期60；两页覆盖完整3条。"},
+      {"verdict": "pass", "reason": "三人各逾期1、积压1/32/1和1/3份额准确，未扩展到未展示人员。"},
+      {"verdict": "pass", "reason": "质量比例66.6%和78.1%正确，GPS局部缺失不冒充零风险。"}
+    ]
+  },
+  "stability/courier-fixed-1.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "3/80的权威数量及分母正确，样本范围在报告声明。"},
+      {"verdict": "pass", "reason": "12477占2/3过半，9485占1/3，集中性正确且不推断责任。"},
+      {"verdict": "pass", "reason": "三单人员/AOI、11/600分钟逾期及543/544/1293分钟等待均与明细及独立答案一致。"},
+      {"verdict": "pass", "reason": "42/39/3/2/0/0/0与独立负荷复算一致。"},
+      {"verdict": "pass", "reason": "28行上下文展示3行、未展示25行正确；限制虽保守但未改变集中性答案。"}
+    ]
+  },
+  "stability/courier-dynamic-1.json": {
+    "goal_covered": false,
+    "note": "缺少合格人员负荷证据，报告complete还给出过半判断错误。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3和积压分母80一致。"},
+      {"verdict": "fail", "reason": "2/3超过一半，却写未过半集中，直接错误回答用户目标。"},
+      {"verdict": "pass", "reason": "分布支持12477积压3逾期2、9485积压1逾期1，仅是负荷子集。"},
+      {"verdict": "pass", "reason": "三单的等待1293/543/544和逾期600/11/11均有明细支持。"}
+    ]
+  },
+  "stability/window-fixed-1.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母483准确。"},
+      {"verdict": "pass", "reason": "三人各1单、1/3占比，不支持单人集中。"},
+      {"verdict": "pass", "reason": "两名人员09:00–11:00同窗口，9485为06:00–08:00；60/240分钟一致，限定子集。"},
+      {"verdict": "pass", "reason": "三单确分属三人、三个不同AOI，未推断因果。"},
+      {"verdict": "fail", "reason": "total_rows55并非另外55行；更关键是三条展示逾期合计已等于全局3，未展示行不能再有逾期集中，宣称无法评估隐藏集中是错误局限。"}
+    ]
+  },
+  "stability/window-dynamic-1.json": {
+    "goal_covered": false,
+    "effective_revision_versions": [2],
+    "revision_note": "版本2由三人各1反证单人集中，实际改查窗口明细；版本3重复否定旧假设，无新执行步骤，不计有效修订。",
+    "note": "传输失败后的程序停止报告，必要证据齐备不等于完成目标回答。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "只引用积压483。"},
+      {"verdict": "pass", "reason": "只引用临期0。"},
+      {"verdict": "pass", "reason": "只引用逾期3。"},
+      {"verdict": "pass", "reason": "只引用近期接单57。"},
+      {"verdict": "pass", "reason": "只引用近期完成152。"}
+    ]
+  },
+  "stability/truncated-fixed-1.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母483及时点准确。"},
+      {"verdict": "pass", "reason": "首页2/3真实截断，不足以全覆盖。"},
+      {"verdict": "pass", "reason": "第2页补齐5246747，三单和人员对应完整正确。"},
+      {"verdict": "pass", "reason": "三人各1条，份额全局分母3，声明上下文截断。"},
+      {"verdict": "pass", "reason": "三人各1和总量3由完整明细及分布一致支持，无范围扩大。"}
+    ]
+  },
+  "stability/truncated-dynamic-1.json": {
+    "goal_covered": true,
+    "effective_revision_versions": [2],
+    "revision_note": "首个逾期明细页2/3真实截断，新添第2页并执行，补覆盖完成。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母483准确。"},
+      {"verdict": "pass", "reason": "首查每页2条逾期明细且2/3截断，首页不足。"},
+      {"verdict": "pass", "reason": "第2页补1条、两页完整覆盖3条。"},
+      {"verdict": "pass", "reason": "9485/10440/15024各1条，等待933/117/265分钟与明细和独立复算一致。"},
+      {"verdict": "pass", "reason": "22427/33664、25916/33181及窗口/坐标完整与质量结果一致。"}
+    ]
+  },
+  "stability/courier-fixed-2.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "fail", "reason": "33920是积压/近期流量的可见任务分母，但overdue的汇总分母是80、due_soon也是80；把三指标分母统称33920错误。"},
+      {"verdict": "pass", "reason": "12477两条/全局三条超过一半，引用分布支持。"},
+      {"verdict": "pass", "reason": "积压3/80=3.75%、9485逾期1、11241逾期0均正确。"},
+      {"verdict": "pass", "reason": "三单人员对应及600/11/11分钟逾期正确。"},
+      {"verdict": "pass", "reason": "重点人员42/39/3/2/0/0/0独立负荷复算一致。"}
+    ]
+  },
+  "stability/courier-dynamic-2.json": {
+    "goal_covered": false,
+    "effective_revision_versions": [2],
+    "revision_note": "版本2实际新增筛选12477的负荷取证；版本3仅重复把容量限制判反证，未新增执行步骤，不计有效路径修订。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3和积压分母80准确。"},
+      {"verdict": "fail", "reason": "全局分母3和12477逾期2已证明过半；截断零逾期人员不能导致集中性无法确认。"},
+      {"verdict": "pass", "reason": "三条已展示逾期的人员/订单/时长正确；不存在额外逾期，保守局限不补足目标。"},
+      {"verdict": "pass", "reason": "42/39/3/2/0/0/0与独立负荷一致，最高者限定已展示数据，未推断容量。"},
+      {"verdict": "pass", "reason": "GPS可用22616/33920及26448/33840，66.7%/78.2%合理四舍五入。"}
+    ]
+  },
+  "stability/window-fixed-2.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "fail", "reason": "引用仅汇总；3、483正确，但汇总不能独立支持三人合计或不集中于单人的追加判断。"},
+      {"verdict": "pass", "reason": "三人各1单和33.33%正确；额外逾期未知的局限多余，结合C4明确判错。"},
+      {"verdict": "pass", "reason": "三单的06:00–08:00和两单09:00–11:00窗口正确，限定子集。"},
+      {"verdict": "fail", "reason": "权威全局逾期3已由全部3条明细覆盖，却说未展示行可能含更多逾期，违反已保存全局计数。"}
+    ]
+  },
+  "stability/window-dynamic-2.json": {
+    "goal_covered": true,
+    "effective_revision_versions": [2],
+    "revision_note": "版本2反证单人集中后实际查询逾期窗口明细；data_truncated触发同时存在但未补分布页，不将该种类算作本条有效修订。版本3没有新执行步骤。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3和积压分母483准确。"},
+      {"verdict": "pass", "reason": "全量逾期3单分属三人，各1单，无单人过半。"},
+      {"verdict": "pass", "reason": "分布前三人各1条和份额1/3一致。"},
+      {"verdict": "pass", "reason": "10440和15024同为09:00–11:00；9485为06:00–08:00，限定已观察窗口。"},
+      {"verdict": "fail", "reason": "说质量工具整体不可用导致GPS字段不可用，证据实际是data完整存在、部分GPS本来不可见使综合status为unavailable；该因果和整项不可用均无证据。"}
+    ]
+  },
+  "stability/truncated-fixed-2.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3和积压483正确。"},
+      {"verdict": "pass", "reason": "首页2/3真实截断，需补第2页。"},
+      {"verdict": "pass", "reason": "补页后三订单、三人员、三AOI对应及完整覆盖准确。"},
+      {"verdict": "fail", "reason": "三个已展示人员各逾期1合计等于权威全局3，局限却称未展示其他有逾期计数人员可能存在，违背全局分母。"},
+      {"verdict": "fail", "reason": "质量工具实际data.quality完整存在且有可用数；报告却声称未提供数据、无法核验质量，直接与证据相反。"}
+    ]
+  },
+  "stability/truncated-dynamic-2.json": {
+    "goal_covered": true,
+    "effective_revision_versions": [2],
+    "revision_note": "首页2/3截断后以相同页大小补第2页，删去无关人员分组，步骤确实执行。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "3/483、483/33664、0/483各指标及分母均正确。"},
+      {"verdict": "pass", "reason": "首页2、第2页1、三条完整覆盖，与实际分页一致。"},
+      {"verdict": "pass", "reason": "三单/三人员对应准确，每人1单及最大1正确。"},
+      {"verdict": "pass", "reason": "最大逾期240分钟，另两条60分钟，排序正确。"},
+      {"verdict": "pass", "reason": "GPS22427/33664和25916/33181、窗口及坐标100%均有工具证据。"}
+    ]
+  },
+  "stability/courier-fixed-3.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母80、18:00时点正确。"},
+      {"verdict": "pass", "reason": "12477逾期2/3已过半，9485为1/3；明确全局风险分母。"},
+      {"verdict": "pass", "reason": "42/39/3/2/0/0/0独立负荷一致，不推断容量。"},
+      {"verdict": "pass", "reason": "三单人员、AOI、600/11/11逾期分钟均正确。"},
+      {"verdict": "pass", "reason": "22616/33920=66.67%、26448/33840=78.16%正确，区分局部缺失与整项数据。"}
+    ]
+  },
+  "stability/courier-dynamic-3.json": {
+    "goal_covered": false,
+    "note": "未取得合格重点人员负荷取证，只查询逾期明细；partial含分母错误。",
+    "claim_reviews": [
+      {"verdict": "fail", "reason": "五指标值正确，却把分母均写33920；overdue和due_soon汇总分母应为积压80。"},
+      {"verdict": "fail", "reason": "12477两条/全局3的过半判断正确，但局限又说不能排除其他逾期人员，与前三行逾期合计已覆盖全局3矛盾。"},
+      {"verdict": "pass", "reason": "12477的两条逾期、AOI15322、等待543/544及逾期11正确，明确不是全部任务负荷。"},
+      {"verdict": "pass", "reason": "9485单条等待1293、逾期600及AOI14590正确。"},
+      {"verdict": "fail", "reason": "可用比例约66.7%/78.2%准确；局部不可用和坐标未认证只能说明限制，不能直接断言全部GPS字段不可靠。"}
+    ]
+  },
+  "stability/window-fixed-3.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "三人各1条、无单人多单，与全部三条逾期明细一致。"},
+      {"verdict": "pass", "reason": "逾期3、汇总指标分母483（积压）正确；与人员分布share分母3区分。"},
+      {"verdict": "pass", "reason": "每人份额1/3准确且全局风险分母明确。"},
+      {"verdict": "pass", "reason": "三AOI及各窗口正确；三人没有完全共同窗口，明确两名人员09:00–11:00相同，足够回答已观察子集目标。"},
+      {"verdict": "pass", "reason": "三人各1不支持单人集中，范围限于当前全量逾期三条。"}
+    ]
+  },
+  "stability/window-dynamic-3.json": {
+    "goal_covered": false,
+    "effective_revision_versions": [2, 3],
+    "revision_note": "版本2据单人集中反证转向逾期窗口明细；版本3据2/3真实截断补第2页，两步均执行且共同窗口证据齐备。版本3把两条不共同扩大为否定全体共同窗口的反证理由不充分；有效部分仅记data_truncated补覆盖，最终报告仍因Token超限失败。",
+    "note": "Token超限后的程序停止报告，非模型目标答案。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "只引用积压483。"},
+      {"verdict": "pass", "reason": "只引用临期0。"},
+      {"verdict": "pass", "reason": "只引用逾期3。"},
+      {"verdict": "pass", "reason": "只引用近期接单57。"},
+      {"verdict": "pass", "reason": "只引用近期完成152。"}
+    ]
+  },
+  "stability/truncated-fixed-3.json": {
+    "goal_covered": true,
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "逾期3、积压分母483一致。"},
+      {"verdict": "pass", "reason": "首页2/3实际截断，不足覆盖全量。"},
+      {"verdict": "pass", "reason": "第2页补1，三单完整覆盖，属性存在且对应正确。"},
+      {"verdict": "pass", "reason": "三人各1和全局分母3及1/3份额正确，未扩展到未展示人员。"},
+      {"verdict": "pass", "reason": "两页人员归属与聚合一致，质量比例66.6%/78.1%准确，GPS局限不影响目标。"}
+    ]
+  },
+  "stability/truncated-dynamic-3.json": {
+    "goal_covered": false,
+    "note": "初始模型传输失败，无工具证据；程序partial无claims，未知费用不能记零。",
+    "claim_reviews": []
+  },
+  "development/truncated-dynamic-1.json": {
+    "goal_covered": false,
+    "note": "Token超限后的程序停止报告；初查为人员分组page_size2，未按问题先查每页2条逾期明细。",
+    "claim_reviews": [
+      {"verdict": "pass", "reason": "程序只引用保存的积压483。"},
+      {"verdict": "pass", "reason": "程序只引用保存的临期0。"},
+      {"verdict": "pass", "reason": "程序只引用保存的逾期3。"},
+      {"verdict": "pass", "reason": "程序只引用保存的近期接单57。"},
+      {"verdict": "pass", "reason": "程序只引用保存的近期完成152。"}
+    ]
+  }
+}

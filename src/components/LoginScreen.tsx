@@ -41,7 +41,7 @@ export default function LoginScreen({ onNavigate, embedded = false }: { onNaviga
       const response = await fetch(`${authBaseUrl}/api/auth/wechat/authorize`, { credentials: 'include' });
       const result = await response.json().catch(() => ({}));
       if (response.ok && result.mock === true) {
-        if (!window.confirm('当前为本地模拟微信登录，不会连接微信。是否以“本地微信测试用户”登录？')) return;
+        if (!window.confirm('当前为本地模拟微信登录，不会连接微信。是否以本地测试账号登录？')) return;
         const mockResponse = await fetch(`${authBaseUrl}/api/auth/wechat/mock`, { method: 'POST', credentials: 'include' });
         const mockResult = await mockResponse.json().catch(() => ({}));
         if (!mockResponse.ok) throw new Error(mockResult.message || '本地模拟登录失败。');

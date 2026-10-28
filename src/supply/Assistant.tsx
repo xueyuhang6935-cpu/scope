@@ -10,9 +10,9 @@ const prompts = ['检查未来三天缺料风险', '查询 P001 库存', '检查
 const promptCards = [{ title: '检查缺料风险', description: '检查未来三天的分析条件', detail: '还缺哪些关键数据？', Icon: Diamond }, { title: '查询物料库存', description: '查看 P001 当前库存', detail: '数量与来源是否清楚？', Icon: Database }, { title: '核对数据质量', description: '检查当前工厂的数据问题', detail: '哪些记录需要处理？', Icon: ShieldCheck }];
 const states = { ready: '就绪', running: '分析中', complete: '完成', failed: '失败', empty: '无数据' };
 
-export function Composer({ contextKey, suggested, reset = 0, available = false, busy = false, onSend, toolbar }: { contextKey: string; suggested?: { text: string }; reset?: number; available?: boolean; busy?: boolean; onSend?: (text: string, requestId: string) => Promise<void>; toolbar?: ReactNode }) {
+export function Composer({ contextKey, suggested, reset = 0, available = false, busy = false, onSend, toolbar, logistics = false }: { contextKey: string; suggested?: { text: string }; reset?: number; available?: boolean; busy?: boolean; onSend?: (text: string, requestId: string) => Promise<void>; toolbar?: ReactNode; logistics?: boolean }) {
   const { currentUser, factory } = useOutletContext<SupplyContext>();
-  const key = `supply-draft:${currentUser}:${factory}:${contextKey}`;
+  const key = `${logistics ? 'logistics' : 'supply'}-draft:${currentUser}:${factory}:${contextKey}`;
   const [draft, setDraft] = useState('');
   const [saved, setSaved] = useState(true);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -37,10 +37,10 @@ export function Composer({ contextKey, suggested, reset = 0, available = false, 
   useEffect(() => { if (suggested) { edit(suggested.text); input.current?.focus(); } }, [suggested]);
   useEffect(() => { if (reset) input.current?.focus(); }, [reset]);
   return <div className={`sp-composer ${toolbar ? 'sp-composer-modern' : ''}`} data-unsaved={draft.trim() ? 'true' : 'false'}>
-    <StatusTag tone={available ? 'success' : 'warning'}>{available ? '查询与调查 · 方案需人工审批' : '供应链助手尚未接入'}</StatusTag>
+    <StatusTag tone={available ? 'success' : 'warning'}>{available ? '查询与调查 · 方案需人工审批' : logistics ? '草稿可编辑 · 调查服务待接入' : '供应链助手尚未接入'}</StatusTag>
     {!saved && <p className="sp-draft-help" role="alert" id={`draft-help-${contextKey}`}>保存失败，请复制草稿后再离开。</p>}
-    <textarea disabled={busy} maxLength={2000} ref={input} aria-label="供应链消息草稿" aria-describedby={!saved ? `draft-help-${contextKey}` : undefined} value={draft} onChange={event => edit(event.target.value)} placeholder="输入你的问题，例如：检查 A 工厂未来三天的缺料风险…" rows={3} />
-    <div className="sp-composer-actions">{toolbar || <ScopedLink to="/data/connections">前往数据接入</ScopedLink>}<Button primary disabled={!available || busy || !draft.trim()} onClick={send} title={available ? '提交只读查询' : '等待供应链助手服务接入'}>{toolbar ? <>发送<ArrowUp size={16} /></> : <><Send size={15} />发送</>}</Button></div>{sendError && <p role="alert">{sendError}</p>}
+    <textarea disabled={busy} maxLength={2000} ref={input} aria-label={logistics ? '调查消息草稿' : '供应链消息草稿'} aria-describedby={!saved ? `draft-help-${contextKey}` : undefined} value={draft} onChange={event => edit(event.target.value)} placeholder={logistics ? '输入你想调查的问题…' : '输入你的问题，例如：检查 A 工厂未来三天的缺料风险…'} rows={3} />
+    <div className="sp-composer-actions">{toolbar || <ScopedLink to="/data/connections">前往数据接入</ScopedLink>}<Button primary disabled={!available || busy || !draft.trim()} onClick={send} title={available ? '提交只读查询' : logistics ? '等待物流调查服务接入' : '等待供应链助手服务接入'}>{toolbar ? <>发送<ArrowUp size={16} /></> : <><Send size={15} />发送</>}</Button></div>{sendError && <p role="alert">{sendError}</p>}
   </div>;
 }
 

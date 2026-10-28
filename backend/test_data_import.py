@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from openpyxl import Workbook
 
 from .auth import now, password_hash
-from .main import create_app
+from .main import create_legacy_test_app as create_app
 
 
 class DataImportTests(unittest.TestCase):

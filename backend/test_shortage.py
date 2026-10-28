@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from .auth import now, password_hash
 from .common import APIError
 from .database_connection import connection
-from .main import create_app
+from .main import create_legacy_test_app as create_app
 from .shortage import calculate, load_snapshot, timestamp
 
 

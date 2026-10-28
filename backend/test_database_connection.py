@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 from .auth import now, password_hash
-from .main import create_app
+from .main import create_legacy_test_app as create_app
 
 
 class DatabaseConnectionTests(unittest.TestCase):

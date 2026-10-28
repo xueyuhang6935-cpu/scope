@@ -26,3 +26,18 @@ __pycache__/
 *.db-*
 *.pem
 *.key
+
+# Additional local database formats, exports and editor state
+*.sqlite3
+*.sqlite3-*
+*.dump
+*.sql.gz
+.idea/
+.vscode/
+._*
+Thumbs.db
+
+# Machine-local credentials and backup directories
+credentials*.txt
+test-account-credentials*.txt
+backups/

@@ -10,7 +10,7 @@ from . import test_data_import as fixtures
 from project.tests.integration import test_supply_workflow as workflow_fixtures
 from .auth import now, password_hash
 from .common import APIError
-from .main import create_app
+from .main import create_legacy_test_app as create_app
 
 
 def grant(role, factories=('A','B'), domains=('inventory','purchase','production','quality','rules'), limit='0'):

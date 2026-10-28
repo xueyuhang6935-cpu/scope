@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Link, useLocation, useOutletContext, type LinkProps } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import type { SupplyContext } from './SupplyShell';
-import { CheckCircle2, CircleAlert, CircleDot, OctagonAlert } from 'lucide-react';
+import { CheckCircle2, ChevronRight, CircleAlert, CircleDot, OctagonAlert } from 'lucide-react';
 import { useBusinessAccess } from './BusinessAccess';
 
 export type Tone = 'success' | 'warning' | 'error' | 'info';
@@ -27,9 +27,9 @@ export function ScopedLink({ to, className = '', ...props }: Omit<LinkProps, 'to
 export function DataTable({ headers, children, caption }: { headers: string[]; children: ReactNode; caption: string }) {
   return <div className="sp-table-scroll" tabIndex={0} aria-label={caption}><table className="sp-table"><caption className="sr-only">{caption}</caption><thead><tr>{headers.map(h => <th key={h} scope="col">{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>;
 }
-export function PageHeading({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+export function PageHeading({ title, subtitle, action, breadcrumb }: { title: string; subtitle?: string; action?: ReactNode; breadcrumb?: string }) {
   const context = useOutletContext<SupplyContext | null>();
-  if (context?.headingTarget) return <>{createPortal(<><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</>, context.headingTarget)}{action && <div className="sp-heading sp-heading-actions">{action}</div>}</>;
+  if (context?.headingTarget) return <>{createPortal(breadcrumb ? <nav className="sp-breadcrumb" aria-label="面包屑"><ScopedLink to="/workspace">{breadcrumb}</ScopedLink><ChevronRight size={14} aria-hidden="true" /><span aria-current="page">{title}</span></nav> : <><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</>, context.headingTarget)}{action && <div className="sp-heading sp-heading-actions">{action}</div>}</>;
   return <div className="sp-heading"><div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{action}</div>;
 }
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {

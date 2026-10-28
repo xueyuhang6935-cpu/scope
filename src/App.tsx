@@ -7,11 +7,11 @@ import ForgotPasswordScreen from './components/ForgotPasswordScreen';
 import AccountSettingsScreen from './components/AccountSettingsScreen';
 import RegisterScreen from './components/RegisterScreen';
 import LoginScreen from './components/LoginScreen';
-import SupplyShell from './supply/SupplyShell';
-import SupplyPages from './supply/SupplyPages';
+import LogisticsShell from './logistics/LogisticsShell';
+import LogisticsPages from './logistics/LogisticsPages';
 
 const screenPaths: Partial<Record<Screen, string>> = {
-  [Screen.WORKSPACE]: '/workspace',
+  [Screen.WORKSPACE]: '/assistant',
   [Screen.ACCOUNT_SETTINGS]: '/account',
   [Screen.LOGIN_SELECT]: '/login-select',
   [Screen.LOGIN]: '/login',
@@ -53,7 +53,7 @@ export default function App() {
       } catch { alert('退出登录失败，请稍后重试。'); }
       return;
     }
-    const target = screenPaths[screen] || '/workspace';
+    const target = screenPaths[screen] || '/assistant';
     if (!['/login-select', '/login', '/register', '/forgot-password'].includes(target)) {
       try {
         const user = await readSession();
@@ -62,7 +62,7 @@ export default function App() {
       } catch { alert('无法确认登录状态，请稍后重试。'); return; }
     }
     const next = new URLSearchParams(location.search).get('next');
-    const afterLogin = next && /^\/(?!\/)/.test(next) && !/^\/(login|register|forgot-password)/.test(next) ? next : '/workspace';
+    const afterLogin = next && /^\/(?!\/)/.test(next) && !/^\/(login|register|forgot-password)/.test(next) ? next : '/assistant';
     navigate(screen === Screen.WORKSPACE && location.pathname === '/login' ? afterLogin : target);
   };
 
@@ -78,16 +78,16 @@ export default function App() {
   };
 
   return <Routes>
-    <Route path="/" element={<Navigate to={currentUser ? '/workspace' : '/login-select'} replace />} />
+    <Route path="/" element={<Navigate to={currentUser ? '/assistant' : '/login-select'} replace />} />
     <Route path="/login-select" element={<LoginSelectScreen onNavigate={authNavigate} />} />
     <Route path="/login" element={<LoginScreen onNavigate={authNavigate} />} />
     <Route path="/register" element={<RegisterScreen onNavigate={authNavigate} />} />
     <Route path="/forgot-password" element={<ForgotPasswordScreen onNavigate={authNavigate} />} />
     <Route element={protectedContent}>
-      <Route element={<SupplyShell currentUser={currentUser} onNavigate={handleNavigate} />}>
+      <Route element={<LogisticsShell currentUser={currentUser} onNavigate={handleNavigate} />}>
         <Route path="/account" element={<AccountSettingsScreen currentUser={currentUser} />} />
-        {['workspace', 'assistant', 'assistant/:threadId', 'risks', 'risks/:eventId', 'approvals', 'approvals/:approvalId', 'data', 'data/connections', 'data/imports/new', 'data/imports/:batchId', 'data/catalog', 'data/catalog/:datasetId', 'data/governance', 'data/governance/issues/:issueId', 'data/preview/:datasetId', 'runs', 'runs/:runId', 'settings'].map(path => <Route key={path} path={path} element={<SupplyPages />} />)}
-        <Route path="*" element={<SupplyPages notFound />} />
+        {['workspace', 'metrics', 'assistant', 'assistant/:threadId', 'risks', 'risks/:eventId', 'approvals', 'approvals/:approvalId', 'knowledge', 'knowledge/:knowledgeId', 'data', 'data/connections', 'data/catalog', 'data/governance', 'data/preview/pickup_tasks', 'runs', 'runs/:runId', 'settings'].map(path => <Route key={path} path={path} element={<LogisticsPages />} />)}
+        <Route path="*" element={<LogisticsPages notFound />} />
       </Route>
     </Route>
   </Routes>;

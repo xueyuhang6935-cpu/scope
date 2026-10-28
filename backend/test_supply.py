@@ -10,7 +10,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from .auth import now, password_hash
-from .main import create_app
+from .main import create_legacy_test_app as create_app
 from .supply_model import propose_with_model
 from .supply_analysis import propose, request_questions, validate_plan
 from .common import APIError

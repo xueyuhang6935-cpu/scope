@@ -1,0 +1,223 @@
+import { expect, test, type Page } from '@playwright/test';
+
+async function setup(page: Page) {
+  let account = 'reader', version = 1, creations = 0;
+  await page.route('**/api/auth/session', route => route.fulfill({ json: { user: { name: '设计验收' } } }));
+  await page.route('**/api/logistics/access/me', route => route.fulfill({ json: { account, version, workspaceId: 'shanghai-logistics', enabled: 1,
+    roles: [{ role: 'investigator', city: 'Shanghai', regions: ['5', '6'] }], roleCatalog: {}, regionCatalog: ['5', '6'] } }));
+  await page.route('**/api/logistics/snapshots/config', route => route.fulfill({ json: { configured: true, batch_id: 'batch', city: 'Shanghai', region_ids: ['5', '6'] } }));
+  await page.route('**/api/logistics/snapshots', route => { creations++; return route.fulfill({ json: { snapshot_id: 'SNP-design', business_as_of: '2000-07-02 10:00:00', city: 'Shanghai', region_ids: ['5'] } }); });
+  const values = { backlog: 21, overdue: null, due_soon: 0, recent_accepted: 3, recent_completed: 2 };
+  await page.route('**/api/logistics/snapshots/SNP-design/summary', route => route.fulfill({ json: { status: 'unavailable', missing_window_count: 1, metric_version: 'logistics-metrics-v1', horizon_minutes: 30, recent_minutes: 60, visible_tasks: 23,
+    metrics: Object.fromEntries(Object.entries(values).map(([id, value]) => [id, { name: id, value, status: value == null ? 'unavailable' : 'ok', known_lower_bound: 1 }])), limitations: ['历史样本不代表生产全量。'] } }));
+  await page.route('**/api/logistics/snapshots/SNP-design/tasks?**', route => {
+    const query = new URL(route.request().url()).searchParams;
+    const search = query.get('search') || '', second = query.get('page') === '2';
+    const id = second || search === 'SECOND' ? 'TASK-SECOND' : 'TASK-FIRST';
+    const rows = search === '无匹配' ? [] : [{ row_index: id === 'TASK-SECOND' ? 1 : 0, order_id: id, region_id: '5', courier_id: '001', aoi_id: 'X', risk_state: 'overdue', current_wait_minutes: 60, current_overdue_minutes: 10, accept_time_reference: '2000-07-02 09:00:00', time_window_end_reference: '2000-07-02 09:50:00' }];
+    return route.fulfill({ json: { rows, total_rows: search ? rows.length : 21, page_size: 20, status: 'ok' } });
+  });
+  await page.route('**/api/logistics/snapshots/SNP-design/task-evidence/*', route => route.fulfill({ json: { snapshot_id: 'SNP-design', business_as_of: '2000-07-02 10:00:00', limitations: ['历史样本'], record: { order_id: 'TASK-SECOND', region_id: '5', courier_id: '001', aoi_id: 'X', completion_observed: false, risk_state: 'overdue', current_wait_minutes: 60, current_overdue_minutes: 10, accept_time_reference: '2000-07-02 09:00:00', time_window_end_reference: '2000-07-02 09:50:00', source_file: 'pickup.csv', source_row: 2, visible_quality: { window: 'available', pickup_gps: '截至 T 无可用采样' } } } }));
+  await page.route('**/api/logistics/approvals/todos?**', route => route.fulfill({ json: { kind: 'my_pending', categories: [{ kind: 'my_pending', name: '我发起的待审建议', count: 31 }, { kind: 'needs_changes', name: '需修改的方案', count: 0 }], rows: [{ run_id: 'LRUN-real', title: '核对窗口', status: 'pending', scope: { region_ids: ['6'], business_as_of: '2000-07-02 09:00:00' } }], total_rows: 31, scope_label: '当前账号全部授权记录，不按当前快照筛选' } }));
+  await page.route('**/api/logistics/snapshots/SNP-design/groups?**', route => route.fulfill({ json: { rows: [{ courier_id: '001', metrics: { backlog: { value: 21, status: 'ok', share: 1 }, overdue: { value: null, status: 'unavailable', known_lower_bound: 1 }, due_soon: { value: 0, status: 'ok' } } }], total_rows: 1, status: 'unavailable', limitations: ['不代表真实人员容量。'] } }));
+  await page.route('**/api/logistics/snapshots/SNP-design/quality', route => route.fulfill({ json: { rows: [], total_rows: 23, status: 'unavailable', quality: { window: { available: 22, unavailable: 1, denominator: 23, not_applicable: 0, available_share: 22/23 }, pickup_gps: { available: 0, unavailable: 2, denominator: 2, not_applicable: 21, available_share: 0 } }, limitations: ['未发生完成 GPS 不适用。'] } }));
+  await page.route('**/api/logistics/snapshots/SNP-design/recent?**', route => route.fulfill({ json: { rows: [{ row_index: 0, order_id: 'FLOW-REAL', courier_id: '001', aoi_id: 'X', accept_time_reference: '2000-07-02 09:30:00', completion_observed: true, pickup_time_reference: '2000-07-02 09:50:00' }], total_rows: 1, status: 'ok', limitations: [] } }));
+  return { switchAccount: () => { account = 'other'; version++; }, revoke: () => { version++; }, creations: () => creations };
+}
+
+test('快照共享、目录分类搜索、配置草稿排序保存与账号隔离', async ({ page }, info) => {
+  const state = await setup(page);
+  await page.goto('/metrics');
+  await expect(page.locator('.lg-metric-grid .lg-metric-card')).toHaveCount(4);
+  await page.getByRole('button', { name: '创建回放快照', exact: true }).click();
+  await expect(page.locator('.lg-metric-card').filter({ hasText: '样本内积压' })).toContainText('21');
+  await expect(page.locator('.lg-metric-card').filter({ hasText: '样本内积压' })).toContainText('截至参考时点已接单、尚未观察到完成的样本任务数。');
+  await expect(page.getByRole('heading', { name: '核心指标概览', exact: true })).toBeVisible();
+  await expect(page.locator('.lg-metric-heading')).toContainText('当前角色关注 · 4 项');
+  const backlogDetails = page.getByRole('button', { name: '查看样本内积压口径', exact: true });
+  await backlogDetails.click();
+  const metricDialog = page.getByRole('dialog');
+  await expect(metricDialog.getByRole('heading', { name: '样本内积压', exact: true })).toBeVisible();
+  await expect(metricDialog).toContainText('上海 · 区域 5 · 同一回放快照');
+  await expect(metricDialog).toContainText('接单时点 ≤ T，且截至 T 未观察到完成。');
+  await expect(metricDialog).toContainText('数值由后端按当前授权快照计算');
+  await page.screenshot({ path: info.outputPath('metric-details-1440.png'), animations: 'disabled' });
+  await metricDialog.getByRole('button', { name: '关闭口径说明', exact: true }).click();
+  await expect(backlogDetails).toBeFocused();
+  await expect(page.getByRole('button', { name: '全部风险', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '查看逾期未完成口径', exact: true }).click();
+  await expect(metricDialog).toContainText('完整数量不可计算；已知至少 1 条');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '查看临期未完成口径', exact: true }).click();
+  await expect(metricDialog).toContainText('T ≤ 窗口截止时点 ≤ T + 30 分钟');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await metricDialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('metric-details-390.png'), animations: 'disabled' });
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.locator('.lg-metric-grid').screenshot({ path: info.outputPath('metric-cards-1440.png'), animations: 'disabled' });
+  await page.getByRole('button', { name: '查看全部指标' }).click();
+  await expect(page.getByRole('navigation', { name: '面包屑' })).toContainText('风险中心');
+  await expect(page.locator('.lg-catalog-item')).toHaveCount(5);
+  await expect(page.locator('.lg-metric-card').filter({ hasText: '样本内积压' })).toContainText('21');
+  expect(state.creations()).toBe(1);
+  await page.getByRole('button', { name: '揽收时效', exact: true }).click();
+  await expect(page.locator('.lg-catalog-item')).toHaveCount(2);
+  await page.getByLabel('搜索指标').fill('完成');
+  await expect(page.locator('.lg-catalog-item')).toHaveCount(1);
+  await page.getByRole('button', { name: '查看近期完成口径', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('logistics-metrics-v1');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: '查看近期完成口径', exact: true })).toBeFocused();
+  await page.getByLabel('搜索指标').fill('');
+  await page.getByRole('button', { name: '加入展示：近期接单' }).click();
+  await page.getByRole('button', { name: '风险概览', exact: true }).click();
+  await expect(page.locator('.lg-metric-grid .lg-metric-card')).toHaveCount(5);
+  await page.getByRole('button', { name: '配置展示指标', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('近期接单', { exact: false }).uncheck();
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.locator('.lg-metric-grid .lg-metric-card')).toHaveCount(5);
+  await expect(page.getByRole('button', { name: '配置展示指标', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: '配置展示指标', exact: true }).click();
+  await page.getByRole('button', { name: 'recent_accepted 上移', exact: true }).click();
+  await page.getByRole('button', { name: '保存配置', exact: true }).click();
+  await expect(page.locator('.lg-metric-grid .lg-metric-card').nth(3)).toContainText('近期接单');
+  await page.reload();
+  await expect(page.locator('.lg-metric-grid .lg-metric-card').nth(3)).toContainText('近期接单');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('scope:home-metrics:shanghai-logistics:reader') || 'null'));
+  expect(saved).toEqual(['backlog', 'overdue', 'due_soon', 'recent_accepted', 'recent_completed']);
+  state.switchAccount();
+  await expect(page.locator('.lg-metric-grid .lg-metric-card')).toHaveCount(4, { timeout: 10000 });
+  await expect(page.locator('.lg-metric-grid .lg-metric-card').nth(3)).toContainText('近期完成');
+});
+
+test('至少一项、无效配置恢复默认、存储失败明确提示', async ({ page }) => {
+  await setup(page);
+  await page.addInitScript(() => localStorage.setItem('scope:home-metrics:shanghai-logistics:reader', '["removed"]'));
+  await page.goto('/metrics');
+  await expect(page.locator('.lg-metric-grid .lg-metric-card')).toHaveCount(4);
+  await page.getByRole('button', { name: '配置展示指标', exact: true }).click();
+  for (const checkbox of await page.getByRole('dialog').getByRole('checkbox').all()) if (await checkbox.isChecked()) await checkbox.uncheck();
+  await expect(page.getByRole('button', { name: '保存配置' })).toBeDisabled();
+  await page.getByRole('button', { name: '恢复默认' }).click();
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error('blocked'); }; });
+  await page.getByRole('button', { name: '保存配置' }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('未能保存配置');
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+});
+
+test('跨页搜索、真实证据、账号工作流及专题，桌面与窄屏布局', async ({ page }, info) => {
+  await setup(page);
+  const investigationRequests: string[] = [];
+  page.on('request', request => { if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/logistics/runs') investigationRequests.push(request.url()); });
+  await page.goto('/metrics');
+  await page.getByRole('button', { name: '创建回放快照', exact: true }).click();
+  const reminders = page.getByRole('region', { name: '风险提醒', exact: true });
+  await expect(reminders).toContainText('区域 5 · 参考时点 2000-07-02 10:00:00');
+  await expect(reminders).toContainText('历史样本不代表生产全量');
+  await expect(reminders.locator('.lg-risk-reminder').nth(0)).toContainText('不可计算（已知至少 1 条）');
+  await expect(reminders.locator('.lg-risk-reminder').nth(1)).toContainText('0 条');
+  await expect(reminders.locator('.lg-risk-reminder').nth(1)).toContainText('30 分钟内截止');
+  await expect(reminders.locator('.lg-risk-reminder').nth(2)).toContainText('窗口缺失 1 条');
+  await expect(reminders.getByRole('link')).toHaveCount(0);
+  await expect(reminders.getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '全部风险', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('textbox', { name: '搜索记录' }).fill('SECOND');
+  await expect(page.locator('#logistics-task-list')).toContainText('共 1 条匹配任务');
+  await expect(page.locator('#logistics-task-list table')).toContainText('TASK-SECOND');
+  await expect(reminders.locator('.lg-risk-reminder').nth(0)).toContainText('不可计算（已知至少 1 条）');
+  await page.getByRole('button', { name: '查看证据', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('TASK-SECOND');
+  await expect(page.getByRole('dialog')).toContainText('未发生完成，不适用');
+  await expect(page.getByRole('dialog')).not.toContainText('可见完成时点');
+  await expect(page).toHaveURL(/\/metrics$/);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: '查看证据', exact: true })).toBeFocused();
+  await expect(page.locator('.lg-todo-category')).toHaveCount(0);
+  await expect(page.locator('.lg-right-stack')).toContainText('风险分布与辅助指标');
+  await expect(page.locator('.lg-right-stack').getByRole('heading', { name: '最近调查', exact: true })).toHaveCount(0);
+  await expect(page.locator('.lg-overview-record')).toHaveCount(0);
+  await page.getByRole('button', { name: '人员负荷与风险分布', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('不可计算（已知至少 1）');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '字段质量', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('完成 GPS');
+  await expect(page.getByRole('dialog').getByRole('row').filter({ hasText: '完成 GPS' })).toContainText('21');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '查看完成明细' }).click();
+  await expect(page.getByRole('dialog')).toContainText('FLOW-REAL');
+  await page.keyboard.press('Escape');
+  for (const width of [1280, 1440, 1920, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); window.scrollTo(0, 0); });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.getByRole('button', { name: '配置展示指标', exact: true })).toBeVisible();
+    expect(await reminders.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`workbench-${width}.png`), fullPage: true, animations: 'disabled' });
+  }
+  expect(investigationRequests).toEqual([]);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole('button', { name: '查看全部指标' }).click();
+  await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); window.scrollTo(0, 0); });
+  await page.screenshot({ path: info.outputPath('metric-center-1440.png'), fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: '配置展示指标', exact: true }).click();
+  await page.screenshot({ path: info.outputPath('configuration-1440.png'), fullPage: true, animations: 'disabled' });
+});
+
+test('汇总失败重试、零值与空样本区分，范围变更和撤权清除', async ({ page }) => {
+  const state = await setup(page);
+  let failing = true, empty = false;
+  await page.route('**/api/logistics/snapshots/SNP-design/summary', route => failing ? route.fulfill({ status: 503, json: { message: '汇总暂不可用' } }) : route.fulfill({ json: { status: empty ? 'empty' : 'ok', missing_window_count: 0, metric_version: 'logistics-metrics-v1', recent_minutes: 60, horizon_minutes: 30,
+    metrics: Object.fromEntries(['backlog', 'overdue', 'due_soon', 'recent_accepted', 'recent_completed'].map(id => [id, { name: id, value: 0, status: empty ? 'empty' : 'ok' }])), limitations: [] } }));
+  await page.goto('/metrics');
+  const reminders = page.getByRole('region', { name: '风险提醒', exact: true });
+  await expect(reminders).toContainText('创建回放快照后展示风险提醒');
+  await page.getByRole('button', { name: '创建回放快照', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: '汇总暂不可用' })).toBeVisible();
+  await expect(page.locator('.lg-metric-card').first()).toContainText('读取失败');
+  await expect(reminders).toContainText('风险数据读取失败');
+  await expect(reminders.locator('.lg-risk-reminder')).toHaveCount(0);
+  failing = false;
+  await page.getByRole('button', { name: '重试读取指标' }).click();
+  await expect(page.locator('.lg-metric-card').first().locator('strong')).toHaveText('0');
+  await expect(reminders.locator('.lg-risk-reminder').nth(0)).toContainText('0 条');
+  await expect(reminders.locator('.lg-risk-reminder').nth(2)).toContainText('没有窗口缺失');
+  await page.getByLabel('回放区域').selectOption('6');
+  await expect(page.locator('.lg-metric-card').first()).toBeDisabled();
+  await expect(page.getByText('当前结果：', { exact: false })).toHaveCount(0);
+  await expect(reminders).toContainText('范围已修改');
+  await expect(reminders.locator('.lg-risk-reminder')).toHaveCount(0);
+  empty = true;
+  await page.getByRole('button', { name: '创建回放快照', exact: true }).click();
+  await expect(page.locator('.lg-metric-card').first().locator('strong')).toHaveText('空样本');
+  await expect(reminders).toContainText('该时点没有可见任务，不能据此判断整个区域没有风险');
+  await expect(reminders.locator('.lg-risk-reminder')).toHaveCount(0);
+  state.revoke();
+  await expect(page.locator('.lg-metric-card').first()).toBeDisabled({ timeout: 10000 });
+  await expect(page.getByText('当前结果：', { exact: false })).toHaveCount(0);
+  await expect(reminders).not.toContainText('参考时点 2000-07-02 10:00:00');
+});
+
+test('迟到的旧快照响应不会回填新范围', async ({ page }) => {
+  const state = await setup(page);
+  let started = false;
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/logistics/snapshots', async route => { started = true; await pending; await route.fulfill({ json: { snapshot_id: 'SNP-design', business_as_of: '2000-07-02 10:00:00', city: 'Shanghai', region_ids: ['5'] } }).catch(() => {}); });
+  await page.goto('/metrics');
+  await page.getByRole('button', { name: '创建回放快照', exact: true }).click();
+  await expect.poll(() => started).toBe(true);
+  await page.getByRole('button', { name: '查看全部指标' }).click();
+  await expect(page.getByRole('navigation', { name: '面包屑' })).toContainText('风险中心');
+  state.revoke();
+  await expect(page.getByLabel('回放区域')).toBeEnabled({ timeout: 10000 });
+  await page.getByLabel('回放区域').selectOption('6');
+  release();
+  await expect(page.locator('.lg-metric-card').first()).toBeDisabled();
+  await expect(page.getByText('当前结果：', { exact: false })).toHaveCount(0);
+});
+// 浏览器回归只验证业务流程，外部字体不可用时使用页面原有本地回退。
+test.beforeEach(async ({ context }) => {
+  await context.route(/^https:\/\/fonts\.(googleapis|gstatic)\.com\//, route => route.abort());
+});

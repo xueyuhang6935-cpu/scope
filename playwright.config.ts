@@ -4,6 +4,7 @@ process.env.NO_PROXY = [process.env.NO_PROXY, '127.0.0.1', 'localhost'].filter(B
 
 export default defineConfig({
   testDir: './tests',
+  outputDir: './test-results/browser',
   fullyParallel: false,
   timeout: 60000,
   use: { baseURL: 'http://127.0.0.1:3010', browserName: 'chromium', viewport: { width: 1440, height: 1000 } },

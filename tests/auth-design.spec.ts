@@ -69,7 +69,7 @@ test('默认显示登录，注册在右侧原位切换', async ({ page }, testIn
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('账号入口内登录成功进入工作台', async ({ page, context }) => {
+test('账号入口内登录成功进入智能助手', async ({ page, context }) => {
   let signedIn = false;
   await context.route('**/api/auth/session', route => route.fulfill(signedIn ? { json: { user: { name: '测试用户' } } } : { status: 401, json: { message: '未登录' } }));
   await context.route('**/api/auth/login', route => { signedIn = true; return route.fulfill({ json: { user: { name: '测试用户' } } }); });
@@ -77,7 +77,7 @@ test('账号入口内登录成功进入工作台', async ({ page, context }) => 
   await page.getByLabel('账号', { exact: true }).fill('tester@example.com');
   await page.getByLabel('密码', { exact: true }).fill('password123');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page).toHaveURL(/\/workspace$/);
+  await expect(page).toHaveURL(/\/assistant$/);
 });
 
 test('注册表单限制验证码并要求协议确认', async ({ page }, testInfo) => {
@@ -97,4 +97,8 @@ test('注册表单限制验证码并要求协议确认', async ({ page }, testIn
   await page.screenshot({ path: testInfo.outputPath('register-mobile.png'), fullPage: true });
   await page.goto('/login');
   await expect(page.getByRole('button', { name: '使用微信登录' })).toBeVisible();
+});
+// 浏览器回归只验证业务流程，外部字体不可用时使用页面原有本地回退。
+test.beforeEach(async ({ context }) => {
+  await context.route(/^https:\/\/fonts\.(googleapis|gstatic)\.com\//, route => route.abort());
 });

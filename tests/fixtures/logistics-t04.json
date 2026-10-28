@@ -1,0 +1,17 @@
+{
+  "description": "执行方案 T04 的人工 A—H 任务，非上海真实记录，仅用于隔离测试",
+  "tasks": [
+    {"order_id":"A","accept_time":"07-02 09:00:00","time_window_end":"07-02 09:30:00","pickup_time":"07-02 10:20:00","courier_id":"001","aoi_id":"X"},
+    {"order_id":"B","accept_time":"07-02 09:20:00","time_window_end":"07-02 10:20:00","pickup_time":"07-02 10:40:00","courier_id":"001","aoi_id":"X"},
+    {"order_id":"C","accept_time":"07-02 09:50:00","time_window_end":"07-02 12:00:00","pickup_time":"07-02 12:10:00","courier_id":"002","aoi_id":"Y"},
+    {"order_id":"D","accept_time":"07-02 08:00:00","time_window_end":"07-02 09:00:00","pickup_time":"07-02 09:00:00","courier_id":"001","aoi_id":"X"},
+    {"order_id":"E","accept_time":"07-02 10:10:00","time_window_end":"07-02 11:00:00","pickup_time":"07-02 11:00:00","courier_id":"003","aoi_id":"Z"},
+    {"order_id":"F","accept_time":"07-02 10:00:00","time_window_end":"07-02 10:00:00","pickup_time":"07-02 10:00:00","courier_id":"002","aoi_id":"Y"},
+    {"order_id":"G","accept_time":"07-01 23:00:00","time_window_end":"07-01 23:30:00","pickup_time":"07-02 11:00:00","courier_id":"002","aoi_id":"X"},
+    {"order_id":"H","accept_time":"07-02 09:40:00","time_window_end":"07-02 10:00:00","pickup_time":"07-02 10:01:00","courier_id":"001","aoi_id":"Z"}
+  ],
+  "expected": {
+    "2000-07-02 10:00:00": {"visible_tasks":7,"completed_tasks":2,"backlog":5,"overdue":2,"due_soon":2,"recent_accepted":4,"recent_completed":1,"order":["G","A","H","B","C"]},
+    "2000-07-02 10:30:00": {"visible_tasks":8,"completed_tasks":4,"backlog":4,"overdue":2,"due_soon":1,"recent_accepted":4,"recent_completed":3,"order":["G","B","E","C"]}
+  }
+}

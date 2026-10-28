@@ -1,4 +1,6 @@
 import hashlib
+from contextvars import ContextVar
+request_id = ContextVar('request_id', default=None)
 from datetime import datetime, timezone
 
 from fastapi.encoders import jsonable_encoder

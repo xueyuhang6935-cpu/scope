@@ -67,7 +67,7 @@ class BackendTests(unittest.TestCase):
         self.assertFalse(hasattr(self.app.state, "storage"))
         health = self.client.get("/api/health")
         self.assertEqual(health.status_code, 200)
-        self.assertEqual(health.json()["workspace"], "supply-chain")
+        self.assertEqual(health.json()["workspace"], "shanghai-logistics")
         self.assertEqual(health.json()["database"], "sqlite")
         for method, path in [("GET", "/api/analyst/catalog"), ("GET", "/api/analyst/workspace"), ("GET", "/api/analyst/sessions"), ("POST", "/api/analyst/analyze"), ("POST", "/api/analyst/message")]:
             self.assertEqual(self.client.request(method, path).status_code, 404)
